@@ -176,6 +176,7 @@ set(keepassx_SOURCES_MAINEXE
 add_feature_info(AutoType WITH_XC_AUTOTYPE "Automatic password typing")
 add_feature_info(KeePassHTTP WITH_XC_HTTP "Browser integration compatible with ChromeIPass and PassIFox")
 add_feature_info(YubiKey WITH_XC_YUBIKEY "YubiKey HMAC-SHA1 challenge-response")
+add_feature_info(Lua WITH_XC_LUA "Lua extensions")
 
 add_subdirectory(http)
 if(WITH_XC_HTTP)
@@ -210,6 +211,10 @@ else()
   list(APPEND keepassx_SOURCES keys/drivers/YubiKeyStub.cpp)
 endif()
 
+if(WITH_XC_LUA)
+  list(APPEND keepassx_SOURCES lua/Lua.cpp)
+endif()
+
 add_library(autotype STATIC ${autotype_SOURCES})
 target_link_libraries(autotype Qt5::Core Qt5::Widgets)
 
@@ -223,6 +228,7 @@ target_link_libraries(keepassx_core
                       ${autotype_LIB}
                       ${YUBIKEY_LIBRARIES}
                       ${ZXCVBN_LIBRARIES}
+                      ${LUA_LIBRARIES}
                       Qt5::Core
                       Qt5::Network
                       Qt5::Concurrent

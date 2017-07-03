@@ -25,12 +25,14 @@
 #include <QCoreApplication>
 #include <QStringList>
 #include <QTextStream>
+#include <QDebug>
 
 #include "gui/UnlockDatabaseDialog.h"
 #include "core/Database.h"
 #include "core/Entry.h"
 #include "core/Group.h"
 #include "keys/CompositeKey.h"
+#include "lua/Lua.h"
 
 
 int List::execute(int argc, char** argv)
@@ -77,6 +79,10 @@ int List::execute(int argc, char** argv)
     if (db == nullptr) {
         return EXIT_FAILURE;
     }
+
+    qInfo() << "Trying to load test.lua";
+    Lua *l = new Lua("test.lua", db);
+    delete l;
 
     Group* group = db->rootGroup();
     if (args.size() == 2) {

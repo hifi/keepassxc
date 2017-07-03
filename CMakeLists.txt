@@ -43,6 +43,7 @@ option(WITH_APP_BUNDLE "Enable Application Bundle for OS X" ON)
 option(WITH_XC_AUTOTYPE "Include Auto-Type." ON)
 option(WITH_XC_HTTP "Include KeePassHTTP and Custom Icon Downloads." OFF)
 option(WITH_XC_YUBIKEY "Include YubiKey support." OFF)
+option(WITH_XC_LUA "Include Lua extension support." OFF)
 
 # Process ui files automatically from source files
 set(CMAKE_AUTOUIC ON)
@@ -243,6 +244,10 @@ if(WITH_XC_YUBIKEY)
   find_package(YubiKey REQUIRED)
 
   include_directories(SYSTEM ${YUBIKEY_INCLUDE_DIRS})
+endif()
+
+if(WITH_XC_LUA)
+  find_package(Lua 5.3 REQUIRED)
 endif()
 
 if(UNIX)
