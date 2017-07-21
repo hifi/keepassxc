@@ -137,7 +137,7 @@ void DatabaseTabWidget::openDatabase(const QString& fileName, const QString& pw,
     DatabaseManagerStruct dbStruct;
 
     // test if we can read/write or read the file
-    QFile file(fileName);
+    QFile file(fileInfo.canonicalFilePath());
     if (!file.open(QIODevice::ReadWrite)) {
         if (!file.open(QIODevice::ReadOnly)) {
             // can't open
