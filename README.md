@@ -51,6 +51,12 @@ To update the project from within the project's folder, you can run the followin
 git pull
 ```
 
+If you want to use the unofficial keepassxc-browser support, please include the following steps:
+```bash
+git checkout feature/chromeKeePassXC
+git fetch && git pull
+```
+
 Once you have downloaded the source code, you can `cd` into the source code directory, build and install KeePassXC:
 
 ```bash
