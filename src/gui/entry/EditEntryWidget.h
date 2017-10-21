@@ -39,10 +39,12 @@ class QButtonGroup;
 class QMenu;
 class QSortFilterProxyModel;
 class QStackedLayout;
+class OpenSSHKey;
 
 namespace Ui {
     class EditEntryWidgetAdvanced;
     class EditEntryWidgetAutoType;
+    class EditEntryWidgetSSHAgent;
     class EditEntryWidgetMain;
     class EditEntryWidgetHistory;
     class EditWidget;
@@ -101,12 +103,19 @@ private slots:
     void useExpiryPreset(QAction* action);
     void updateAttachmentButtonsEnabled(const QModelIndex& current);
     void toggleHideNotes(bool visible);
+    void updateSSHAgent();
+    void updateSSHAgentKeyInfo();
+    void browsePrivateKey();
+    void addKeyToAgent();
+    void removeKeyFromAgent();
+    void copyPublicKey();
 
 private:
     void setupMain();
     void setupAdvanced();
     void setupIcon();
     void setupAutoType();
+    void setupSSHAgent();
     void setupProperties();
     void setupHistory();
 
@@ -114,6 +123,8 @@ private:
     void setForms(const Entry* entry, bool restore = false);
     QMenu* createPresetsMenu();
     void updateEntryData(Entry* entry) const;
+    OpenSSHKey getPrivateKey();
+    void saveSSHAgentConfig();
 
     void displayAttribute(QModelIndex index, bool showProtected);
 
@@ -125,11 +136,13 @@ private:
     const QScopedPointer<Ui::EditEntryWidgetMain> m_mainUi;
     const QScopedPointer<Ui::EditEntryWidgetAdvanced> m_advancedUi;
     const QScopedPointer<Ui::EditEntryWidgetAutoType> m_autoTypeUi;
+    const QScopedPointer<Ui::EditEntryWidgetSSHAgent> m_sshAgentUi;
     const QScopedPointer<Ui::EditEntryWidgetHistory> m_historyUi;
     QWidget* const m_mainWidget;
     QWidget* const m_advancedWidget;
     EditWidgetIcons* const m_iconsWidget;
     QWidget* const m_autoTypeWidget;
+    QWidget* const m_sshAgentWidget;
     EditWidgetProperties* const m_editWidgetProperties;
     QWidget* const m_historyWidget;
     EntryAttachments* const m_entryAttachments;

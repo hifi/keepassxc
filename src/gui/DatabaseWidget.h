@@ -24,6 +24,8 @@
 #include <QFileSystemWatcher>
 #include <QTimer>
 
+#include "config-keepassx.h"
+
 #include "core/Uuid.h"
 
 #include "gui/entry/EntryModel.h"
@@ -50,6 +52,9 @@ class MessageWidget;
 class DetailsWidget;
 class UnlockDatabaseDialog;
 class QFileSystemWatcher;
+#ifdef WITH_XC_SSHAGENT
+class Agent;
+#endif
 
 namespace Ui {
     class SearchWidget;
@@ -239,6 +244,10 @@ private:
     QTimer m_fileWatchUnblockTimer;
     bool m_ignoreAutoReload;
     bool m_databaseModified;
+
+#ifdef WITH_XC_SSHAGENT
+    Agent* m_agent;
+#endif
 };
 
 #endif // KEEPASSX_DATABASEWIDGET_H
