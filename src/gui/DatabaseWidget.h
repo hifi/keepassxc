@@ -29,6 +29,7 @@
 #include "gui/entry/EntryModel.h"
 #include "gui/MessageWidget.h"
 #include "gui/csvImport/CsvImportWizard.h"
+#include "config-keepassx.h"
 
 class ChangeMasterKeyWidget;
 class DatabaseOpenWidget;
@@ -49,6 +50,9 @@ class UnlockDatabaseWidget;
 class MessageWidget;
 class UnlockDatabaseDialog;
 class QFileSystemWatcher;
+#ifdef WITH_XC_SSHAGENT
+class Agent;
+#endif
 
 namespace Ui {
     class SearchWidget;
@@ -231,6 +235,10 @@ private:
     QTimer m_fileWatchUnblockTimer;
     bool m_ignoreAutoReload;
     bool m_databaseModified;
+
+#ifdef WITH_XC_SSHAGENT
+    Agent* m_agent;
+#endif
 };
 
 #endif // KEEPASSX_DATABASEWIDGET_H

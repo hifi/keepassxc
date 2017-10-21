@@ -176,6 +176,7 @@ set(keepassx_SOURCES_MAINEXE
 add_feature_info(AutoType WITH_XC_AUTOTYPE "Automatic password typing")
 add_feature_info(KeePassHTTP WITH_XC_HTTP "Browser integration compatible with ChromeIPass and PassIFox")
 add_feature_info(YubiKey WITH_XC_YUBIKEY "YubiKey HMAC-SHA1 challenge-response")
+add_feature_info(SSHAgent WITH_XC_SSHAGENT "SSH agent integration compatible with KeeAgent")
 
 add_subdirectory(http)
 if(WITH_XC_HTTP)
@@ -184,6 +185,11 @@ endif()
 
 add_subdirectory(autotype)
 add_subdirectory(cli)
+
+add_subdirectory(sshagent)
+if(WITH_XC_SSHAGENT)
+    set(sshagent_LIB sshagent Qt5::Core Qt5::Network)
+endif()
 
 set(autotype_SOURCES
     core/Tools.cpp
@@ -196,6 +202,16 @@ set(autotype_SOURCES
     autotype/WildcardMatcher.cpp
     autotype/WindowSelectComboBox.cpp
     autotype/test/AutoTypeTestInterface.h
+)
+
+set(sshagent_SOURCES
+    sshagent/Agent.cpp
+    sshagent/ASN1Key.cpp
+    sshagent/BinaryStream.cpp
+    sshagent/Client.cpp
+    sshagent/KeeAgentSettings.cpp
+    sshagent/OpenSSHKey.cpp
+    sshagent/PEM.cpp
 )
 
 if(MINGW)
@@ -215,12 +231,18 @@ target_link_libraries(autotype Qt5::Core Qt5::Widgets)
 
 set(autotype_LIB autotype)
 
+add_library(sshagent STATIC ${sshagent_SOURCES})
+target_link_libraries(sshagent Qt5::Core Qt5::Widgets Qt5::Network ${GCRYPT_LIBRARIES})
+
+set(sshagent_LIB sshagent)
+
 add_library(keepassx_core STATIC ${keepassx_SOURCES})
 
 set_target_properties(keepassx_core PROPERTIES COMPILE_DEFINITIONS KEEPASSX_BUILDING_CORE)
 target_link_libraries(keepassx_core
                       ${keepasshttp_LIB}
                       ${autotype_LIB}
+                      ${sshagent_LIB}
                       ${YUBIKEY_LIBRARIES}
                       ${ZXCVBN_LIBRARIES}
                       Qt5::Core
