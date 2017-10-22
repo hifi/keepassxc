@@ -33,7 +33,7 @@ public:
     bool addAtDatabaseOpen();
     bool removeAtDatabaseClose();
     bool useConfirmConstraintWhenAdding();
-    bool useLifetimeConstraintWheAdding();
+    bool useLifetimeConstraintWhenAdding();
     int lifetimeConstraintDuration();
 
     QString selectedType();

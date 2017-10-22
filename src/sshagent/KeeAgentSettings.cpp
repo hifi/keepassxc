@@ -42,7 +42,7 @@ bool KeeAgentSettings::useConfirmConstraintWhenAdding()
     return m_useConfirmConstraintWhenAdding;
 }
 
-bool KeeAgentSettings::useLifetimeConstraintWheAdding()
+bool KeeAgentSettings::useLifetimeConstraintWhenAdding()
 {
     return m_useLifetimeConstraintWhenAdding;
 }

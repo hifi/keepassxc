@@ -60,6 +60,20 @@ QString OpenSSHKey::getComment()
     return m_comment;
 }
 
+QString OpenSSHKey::getPublicKey()
+{
+    QByteArray publicKey;
+    BinaryStream stream(&publicKey);
+
+    stream.writePack(m_type);
+
+    foreach (QByteArray ba, m_publicData) {
+        stream.writePack(ba);
+    }
+
+    return m_type + " " + QString::fromLatin1(publicKey.toBase64()) + " " + m_comment;
+}
+
 void OpenSSHKey::setType(QString type)
 {
     m_type = type;

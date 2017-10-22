@@ -35,6 +35,7 @@ public:
     int getKeyLength();
     QString getFingerprint();
     QString getComment();
+    QString getPublicKey();
 
     void setType(QString type);
     void setPublicData(QList<QByteArray> data);
