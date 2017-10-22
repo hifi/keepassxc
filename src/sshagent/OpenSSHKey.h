@@ -42,7 +42,7 @@ public:
     void setPrivateData(QList<QByteArray> data);
     void setComment(QString comment);
 
-    static QList<QSharedPointer<OpenSSHKey>> parse(QByteArray &data);
+    static QList<QSharedPointer<OpenSSHKey>> parse(QByteArray &data, const QString &passphrase = nullptr);
 
     bool readPublic(BinaryStream &stream);
     bool readPrivate(BinaryStream &stream);

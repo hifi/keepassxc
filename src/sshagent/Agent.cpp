@@ -70,14 +70,20 @@ QList<QSharedPointer<OpenSSHKey>> Agent::getKeys(Database *db)
         if (settings.allowUseOfSshKey()
                 && settings.addAtDatabaseOpen()
                 && settings.removeAtDatabaseClose()
-                && settings.selectedType() == "attachment"
-                && settings.attachmentName().length() > 0) {
+                ) {
 
-            if (e->attachments()->hasKey(settings.attachmentName())) {
+            if (settings.selectedType() == "attachment") {
                 QByteArray keyData = e->attachments()->value(settings.attachmentName());
                 PEM pem(keyData);
                 pem.parse();
-                keys.append(pem.getKeys());
+                keys.append(pem.getKeys(e->password()));
+            } else if (settings.fileName().length() > 0) {
+                QFile file(settings.fileName());
+                if (file.open(QIODevice::ReadOnly)) {
+                    PEM pem(file.readAll());
+                    pem.parse();
+                    keys.append(pem.getKeys(e->password()));
+                }
             }
         }
     }

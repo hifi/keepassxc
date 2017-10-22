@@ -20,10 +20,7 @@
 
 BinaryStream::BinaryStream(QByteArray *ba, QObject *parent) : QObject(parent)
 {
-    m_buffer = new QBuffer(ba);
-    m_buffer->open(QIODevice::ReadWrite);
-
-    m_dev = m_buffer;
+    setData(ba);
 }
 
 BinaryStream::~BinaryStream()
@@ -46,6 +43,18 @@ QIODevice* BinaryStream::getDevice()
 void BinaryStream::setDevice(QIODevice *dev)
 {
     m_dev = dev;
+}
+
+void BinaryStream::setData(QByteArray *ba)
+{
+    if (m_buffer) {
+        delete m_buffer;
+    }
+
+    m_buffer = new QBuffer(ba);
+    m_buffer->open(QIODevice::ReadWrite);
+
+    m_dev = m_buffer;
 }
 
 void BinaryStream::setTimeout(int timeout)

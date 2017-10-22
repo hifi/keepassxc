@@ -18,6 +18,12 @@
 #include "OpenSSHKey.h"
 #include <QDebug>
 #include <QCryptographicHash> // or gcrypt?
+#include <gcrypt.h>
+
+// temp bcrypt_pbkdf.cpp
+int
+bcrypt_pbkdf(const char *pass, size_t passlen, const uint8_t *salt, size_t saltlen,
+    uint8_t *key, size_t keylen, unsigned int rounds);
 
 QString OpenSSHKey::getType()
 {
@@ -94,13 +100,13 @@ void OpenSSHKey::setComment(QString comment)
     m_comment = comment;
 }
 
-QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data)
+QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QString &passphrase)
 {
     QList<QSharedPointer<OpenSSHKey>> sshKeys;
     QByteArray magic;
     QString cipherName;
     QString kdfName;
-    QString kdfOptions;
+    QByteArray kdfOptions;
     quint32 numberOfKeys;
     QByteArray privateKeys;
 
@@ -110,24 +116,12 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data)
     stream.read(magic);
 
     if (QString::fromLatin1(magic) != "openssh-key-v1") {
-        qWarning() << "magic" << magic;
+        qWarning() << "Invalid magic" << magic;
         return sshKeys;
     }
 
     stream.readPack(cipherName);
-
-    if (cipherName != "none") {
-        qWarning() << "cipherName" << cipherName;
-        return sshKeys;
-    }
-
     stream.readPack(kdfName);
-
-    if (kdfName != "none") {
-        qWarning() << "kdfName" << cipherName;
-        return sshKeys;
-    }
-
     stream.readPack(kdfOptions);
     stream.read(numberOfKeys);
 
@@ -143,8 +137,60 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data)
 
     // padded list of keys
     stream.readPack(privateKeys);
-
     BinaryStream keyStream(&privateKeys);
+
+    QByteArray key;
+    QByteArray decrypted;
+    int keyLen, ivLen;
+    int cipher = 0;
+    int cipherMode;
+
+    if (cipherName == "aes256-cbc") {
+        keyLen = 32;
+        ivLen = 16;
+        cipher = GCRY_CIPHER_AES256;
+        cipherMode = GCRY_CIPHER_MODE_CBC;
+    } else if (cipherName != "none") {
+        qWarning() << "cipherName" << cipherName;
+        return sshKeys;
+    }
+
+    key.fill(0, keyLen + ivLen);
+
+    if (kdfName == "bcrypt") {
+        BinaryStream optionStream(&kdfOptions);
+
+        QByteArray salt;
+        quint32 rounds;
+
+        optionStream.readPack(salt);
+        optionStream.read(rounds);
+
+        QByteArray phraseData = passphrase.toLatin1();
+
+        bcrypt_pbkdf(phraseData.data(), phraseData.length(),
+                     (uint8_t *)salt.data(), salt.length(),
+                     (uint8_t *)key.data(), key.length(),
+                     rounds);
+    } else if (kdfName != "none") {
+        qWarning() << "Unhandled kdfName" << kdfName;
+        return sshKeys;
+    }
+
+    if (cipher > 0) {
+        gcry_cipher_hd_t hd;
+
+        gcry_cipher_open(&hd, cipher, cipherMode, 0);
+        gcry_cipher_setkey(hd, key.data(), keyLen);
+        gcry_cipher_setiv(hd, key.data() + keyLen, ivLen);
+
+        decrypted.resize(privateKeys.length());
+
+        gcry_cipher_decrypt(hd, decrypted.data(), decrypted.length(), privateKeys.data(), privateKeys.length());
+        gcry_cipher_close(hd);
+
+        keyStream.setData(&decrypted);
+    }
 
     quint32 checkInt1;
     quint32 checkInt2;
@@ -153,7 +199,7 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data)
     keyStream.read(checkInt2);
 
     if (checkInt1 != checkInt2) {
-        qWarning() << "check integers don't match";
+        qWarning() << "Decryption failed, check integers don't match" << checkInt1 << checkInt2;
         return sshKeys;
     }
 

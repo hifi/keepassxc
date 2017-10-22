@@ -34,7 +34,7 @@ public:
 
     bool parse();
     QString getType();
-    QList<QSharedPointer<OpenSSHKey>> getKeys();
+    QList<QSharedPointer<OpenSSHKey>> getKeys(const QString &passphrase = nullptr);
 
 private:
     QString m_string;

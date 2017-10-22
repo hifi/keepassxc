@@ -212,6 +212,8 @@ set(sshagent_SOURCES
     sshagent/KeeAgentSettings.cpp
     sshagent/OpenSSHKey.cpp
     sshagent/PEM.cpp
+    sshagent/blowfish.c
+    sshagent/bcrypt_pbkdf.cpp
 )
 
 if(MINGW)

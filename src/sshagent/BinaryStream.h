@@ -34,6 +34,7 @@ public:
     const QString errorString();
     QIODevice* getDevice();
     void setDevice(QIODevice *dev);
+    void setData(QByteArray *ba);
     void setTimeout(int timeout);
 
     bool read(QByteArray &ba);
