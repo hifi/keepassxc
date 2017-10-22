@@ -141,3 +141,50 @@ bool KeeAgentSettings::fromXml(const QByteArray &ba)
 
     return true;
 }
+
+QByteArray KeeAgentSettings::toXml()
+{
+    QByteArray ba;
+    QXmlStreamWriter writer(&ba);
+
+    // real KeeAgent can only read UTF-16
+    writer.setCodec(QTextCodec::codecForName("UTF-16"));
+    writer.setAutoFormatting(true);
+    writer.setAutoFormattingIndent(2);
+
+    writer.writeStartDocument();
+
+    writer.writeStartElement("EntrySettings");
+    writer.writeAttribute("xmlns:xsd", "http://www.w3.org/2001/XMLSchema");
+    writer.writeAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+
+    writer.writeTextElement("AllowUseOfSshKey", m_allowUseOfSshKey ? "true" : "false");
+    writer.writeTextElement("AddAtDatabaseOpen", m_addAtDatabaseOpen ? "true" : "false");
+    writer.writeTextElement("RemoveAtDatabaseClose", m_removeAtDatabaseClose ? "true" : "false");
+    writer.writeTextElement("UseConfirmConstraintWhenAdding", m_useConfirmConstraintWhenAdding ? "true" : "false");
+    writer.writeTextElement("UseLifetimeConstraintWhenAdding", m_useLifetimeConstraintWhenAdding ? "true" : "false");
+    writer.writeTextElement("LifetimeConstraintDuration", QString::number(m_lifetimeConstraintDuration));
+
+    writer.writeStartElement("Location");
+    writer.writeTextElement("SelectedType", m_selectedType);
+
+    if (m_attachmentName.length() > 0) {
+        writer.writeTextElement("AttachmentName", m_attachmentName);
+    } else {
+        writer.writeEmptyElement("AttachmentName");
+    }
+
+    writer.writeTextElement("SaveAttachmentToTempFile", m_saveAttachmentToTempFile ? "true" : "false");
+
+    if (m_fileName.length() > 0) {
+        writer.writeTextElement("FileName", m_fileName);
+    } else {
+        writer.writeEmptyElement("FileName");
+    }
+
+    writer.writeEndElement(); // Location
+    writer.writeEndElement(); // EntrySettings
+    writer.writeEndDocument();
+
+    return ba;
+}

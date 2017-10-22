@@ -28,6 +28,7 @@ public:
     KeeAgentSettings(const QByteArray &ba);
 
     bool fromXml(const QByteArray &ba);
+    QByteArray toXml();
 
     bool allowUseOfSshKey();
     bool addAtDatabaseOpen();
