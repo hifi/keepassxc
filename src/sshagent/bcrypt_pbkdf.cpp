@@ -102,6 +102,9 @@ int
 bcrypt_pbkdf(const char *pass, size_t passlen, const quint8 *salt, size_t saltlen,
     quint8 *key, size_t keylen, unsigned int rounds)
 {
+    QCryptographicHash ctx(QCryptographicHash::Sha512);
+    QByteArray sha2pass;
+    QByteArray sha2salt;
     quint8 out[BCRYPT_HASHSIZE];
     quint8 tmpout[BCRYPT_HASHSIZE];
     quint8 countsalt[4];
@@ -119,9 +122,9 @@ bcrypt_pbkdf(const char *pass, size_t passlen, const quint8 *salt, size_t saltle
     amt = (keylen + stride - 1) / stride;
 
     /* collapse password */
-    QByteArray passArray;
-    passArray.append(pass, passlen);
-    QByteArray sha2pass = QCryptographicHash::hash(passArray, QCryptographicHash::Sha512);
+    ctx.reset();
+    ctx.addData(pass, passlen);
+    sha2pass = ctx.result();
 
     /* generate key, sizeof(out) at a time */
     for (count = 1; keylen > 0; count++) {
@@ -131,19 +134,19 @@ bcrypt_pbkdf(const char *pass, size_t passlen, const quint8 *salt, size_t saltle
         countsalt[3] = count & 0xff;
 
         /* first round, salt is salt */
-        QByteArray saltArray;
-        saltArray.append((char *)salt, saltlen);
-        saltArray.append((char *)countsalt, sizeof(countsalt));
-        QByteArray sha2salt = QCryptographicHash::hash(saltArray, QCryptographicHash::Sha512);
+        ctx.reset();
+        ctx.addData((char *)salt, saltlen);
+        ctx.addData((char *)countsalt, sizeof(countsalt));
+        sha2salt = ctx.result();
 
         bcrypt_hash((quint8*)sha2pass.data(), (quint8*)sha2salt.data(), tmpout);
         memcpy(out, tmpout, sizeof(out));
 
         for (i = 1; i < rounds; i++) {
             /* subsequent rounds, salt is previous output */
-            saltArray.clear();
-            saltArray.append((char *)tmpout, sizeof(tmpout));
-            sha2salt = QCryptographicHash::hash(saltArray, QCryptographicHash::Sha512);
+            ctx.reset();
+            ctx.addData((char *)tmpout, sizeof(tmpout));
+            sha2salt = ctx.result();
             bcrypt_hash((quint8*)sha2pass.data(), (quint8*)sha2salt.data(), tmpout);
             for (j = 0; j < sizeof(out); j++)
                 out[j] ^= tmpout[j];
