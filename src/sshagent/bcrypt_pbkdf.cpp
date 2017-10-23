@@ -111,7 +111,7 @@ int bcrypt_pbkdf(const QByteArray &pass, const QByteArray &salt, QByteArray &key
     if (rounds < 1)
         return -1;
     if (pass.length() == 0 || salt.length() == 0 || key.length() == 0 ||
-        (quint32)key.length() > sizeof(out) * sizeof(out))
+        static_cast<quint32>(key.length()) > sizeof(out) * sizeof(out))
         return -1;
 
     quint32 stride = (key.length() + sizeof(out) - 1) / sizeof(out);
@@ -141,7 +141,7 @@ int bcrypt_pbkdf(const QByteArray &pass, const QByteArray &salt, QByteArray &key
         for (quint32 i = 1; i < rounds; i++) {
             /* subsequent rounds, salt is previous output */
             ctx.reset();
-            ctx.addData((char *)tmpout, sizeof(tmpout));
+            ctx.addData(reinterpret_cast<char *>(tmpout), sizeof(tmpout));
             sha2salt = ctx.result();
             bcrypt_hash(reinterpret_cast<quint8 *>(sha2pass.data()), reinterpret_cast<quint8 *>(sha2salt.data()), tmpout);
             for (quint32 j = 0; j < sizeof(out); j++)
