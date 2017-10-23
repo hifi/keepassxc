@@ -26,9 +26,9 @@ class BinaryStream : public QObject
 {
     Q_OBJECT
 public:
-    explicit BinaryStream(QObject *parent = 0) : QObject(parent) { }
-    BinaryStream(QIODevice *dev, QObject *parent = 0) : QObject(parent), m_dev(dev) { }
-    BinaryStream(QByteArray *ba, QObject *parent = 0);
+    explicit BinaryStream(QObject *parent = nullptr) : QObject(parent) { }
+    BinaryStream(QIODevice *dev) : QObject(dev), m_dev(dev) { }
+    BinaryStream(QByteArray *ba, QObject *parent = nullptr);
     ~BinaryStream();
 
     const QString errorString();
@@ -64,8 +64,8 @@ protected:
 private:
     int m_timeout = -1;
     QString m_error;
-    QIODevice *m_dev = 0;
-    QBuffer *m_buffer = 0;
+    QIODevice *m_dev = nullptr;
+    QBuffer *m_buffer = nullptr;
 };
 
 #endif // BINARYSTREAM_H
