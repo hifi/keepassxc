@@ -21,9 +21,7 @@
 #include <gcrypt.h>
 
 // temp bcrypt_pbkdf.cpp
-int
-bcrypt_pbkdf(const char *pass, size_t passlen, const uint8_t *salt, size_t saltlen,
-    uint8_t *key, size_t keylen, unsigned int rounds);
+int bcrypt_pbkdf(const QByteArray &pass, const QByteArray &salt, QByteArray &key, quint32 rounds);
 
 QString OpenSSHKey::getType()
 {
@@ -168,10 +166,7 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
 
         QByteArray phraseData = passphrase.toLatin1();
 
-        bcrypt_pbkdf(phraseData.data(), phraseData.length(),
-                     (uint8_t *)salt.data(), salt.length(),
-                     (uint8_t *)key.data(), key.length(),
-                     rounds);
+        bcrypt_pbkdf(phraseData, salt, key, rounds);
     } else if (kdfName != "none") {
         qWarning() << "Unhandled kdfName" << kdfName;
         return sshKeys;

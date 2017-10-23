@@ -55,7 +55,7 @@ extern "C" {
 #define explicit_bzero bzero
 
 static void
-bcrypt_hash(quint8 *sha2pass, quint8 *sha2salt, quint8 *out)
+bcrypt_hash(const quint8 *sha2pass, const quint8 *sha2salt, quint8 *out)
 {
     blf_ctx state;
     quint8 ciphertext[BCRYPT_HASHSIZE] = // "OxychromaticBlowfishSwatDynamite"
@@ -98,9 +98,7 @@ bcrypt_hash(quint8 *sha2pass, quint8 *sha2salt, quint8 *out)
     explicit_bzero(&state, sizeof(state));
 }
 
-int
-bcrypt_pbkdf(const char *pass, size_t passlen, const quint8 *salt, size_t saltlen,
-    quint8 *key, size_t keylen, unsigned int rounds)
+int bcrypt_pbkdf(const QByteArray &pass, const QByteArray &salt, QByteArray &key, quint32 rounds)
 {
     QCryptographicHash ctx(QCryptographicHash::Sha512);
     QByteArray sha2pass;
@@ -108,26 +106,24 @@ bcrypt_pbkdf(const char *pass, size_t passlen, const quint8 *salt, size_t saltle
     quint8 out[BCRYPT_HASHSIZE];
     quint8 tmpout[BCRYPT_HASHSIZE];
     quint8 countsalt[4];
-    size_t i, j, amt, stride;
-    quint32 count;
-    size_t origkeylen = keylen;
 
     /* nothing crazy */
     if (rounds < 1)
         return -1;
-    if (passlen == 0 || saltlen == 0 || keylen == 0 ||
-        keylen > sizeof(out) * sizeof(out))
+    if (pass.length() == 0 || salt.length() == 0 || key.length() == 0 ||
+        (quint32)key.length() > sizeof(out) * sizeof(out))
         return -1;
-    stride = (keylen + sizeof(out) - 1) / sizeof(out);
-    amt = (keylen + stride - 1) / stride;
+
+    quint32 stride = (key.length() + sizeof(out) - 1) / sizeof(out);
+    quint32 amt = (key.length() + stride - 1) / stride;
 
     /* collapse password */
     ctx.reset();
-    ctx.addData(pass, passlen);
+    ctx.addData(pass);
     sha2pass = ctx.result();
 
     /* generate key, sizeof(out) at a time */
-    for (count = 1; keylen > 0; count++) {
+    for (quint32 count = 1, keylen = key.length(); keylen > 0; count++) {
         countsalt[0] = (count >> 24) & 0xff;
         countsalt[1] = (count >> 16) & 0xff;
         countsalt[2] = (count >> 8) & 0xff;
@@ -135,20 +131,20 @@ bcrypt_pbkdf(const char *pass, size_t passlen, const quint8 *salt, size_t saltle
 
         /* first round, salt is salt */
         ctx.reset();
-        ctx.addData((char *)salt, saltlen);
-        ctx.addData((char *)countsalt, sizeof(countsalt));
+        ctx.addData(salt);
+        ctx.addData(reinterpret_cast<char *>(countsalt), sizeof(countsalt));
         sha2salt = ctx.result();
 
-        bcrypt_hash((quint8*)sha2pass.data(), (quint8*)sha2salt.data(), tmpout);
+        bcrypt_hash(reinterpret_cast<quint8 *>(sha2pass.data()), reinterpret_cast<quint8 *>(sha2salt.data()), tmpout);
         memcpy(out, tmpout, sizeof(out));
 
-        for (i = 1; i < rounds; i++) {
+        for (quint32 i = 1; i < rounds; i++) {
             /* subsequent rounds, salt is previous output */
             ctx.reset();
             ctx.addData((char *)tmpout, sizeof(tmpout));
             sha2salt = ctx.result();
-            bcrypt_hash((quint8*)sha2pass.data(), (quint8*)sha2salt.data(), tmpout);
-            for (j = 0; j < sizeof(out); j++)
+            bcrypt_hash(reinterpret_cast<quint8 *>(sha2pass.data()), reinterpret_cast<quint8 *>(sha2salt.data()), tmpout);
+            for (quint32 j = 0; j < sizeof(out); j++)
                 out[j] ^= tmpout[j];
         }
 
@@ -156,11 +152,12 @@ bcrypt_pbkdf(const char *pass, size_t passlen, const quint8 *salt, size_t saltle
          * pbkdf2 deviation: output the key material non-linearly.
          */
         amt = MINIMUM(amt, keylen);
+        quint32 i;
         for (i = 0; i < amt; i++) {
-            size_t dest = i * stride + (count - 1);
-            if (dest >= origkeylen)
+            int dest = i * stride + (count - 1);
+            if (dest >= key.length())
                 break;
-            key[dest] = out[i];
+            key.data()[dest] = out[i];
         }
         keylen -= i;
     }
