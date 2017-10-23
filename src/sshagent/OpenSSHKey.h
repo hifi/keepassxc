@@ -19,7 +19,6 @@
 #define OPENSSHKEY_H
 
 #include "BinaryStream.h"
-#include <QSharedPointer>
 
 namespace SSHAgent {
     class OpenSSHKey;
@@ -29,31 +28,33 @@ class OpenSSHKey
 {
 public:
     OpenSSHKey() { }
-    OpenSSHKey(QString type, QList<QByteArray> data, QString comment) : m_type(type), m_privateData(data), m_comment(comment) { }
+
+    bool parse(const QByteArray &in, const QString &passphrase = nullptr);
 
     QString getType();
     int getKeyLength();
     QString getFingerprint();
     QString getComment();
     QString getPublicKey();
+    QString getErrorString();
 
     void setType(QString type);
     void setPublicData(QList<QByteArray> data);
     void setPrivateData(QList<QByteArray> data);
     void setComment(QString comment);
 
-    static QList<QSharedPointer<OpenSSHKey>> parse(QByteArray &data, const QString &passphrase = nullptr);
-
     bool readPublic(BinaryStream &stream);
     bool readPrivate(BinaryStream &stream);
     bool writePublic(BinaryStream &stream);
     bool writePrivate(BinaryStream &stream);
 private:
+    bool parsePEM(const QByteArray &in, QByteArray &out);
 
     QString m_type;
     QList<QByteArray> m_publicData;
     QList<QByteArray> m_privateData;
     QString m_comment;
+    QString m_error;
 };
 
 #endif // OPENSSHKEY_H

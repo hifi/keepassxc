@@ -16,8 +16,7 @@
  */
 
 #include "OpenSSHKey.h"
-#include <QDebug>
-#include <QCryptographicHash> // or gcrypt?
+#include <QCryptographicHash>
 #include <gcrypt.h>
 
 // temp bcrypt_pbkdf.cpp
@@ -50,7 +49,7 @@ QString OpenSSHKey::getFingerprint()
 
     stream.writeString(m_type);
 
-    foreach (QByteArray ba, m_publicData) {
+    for (QByteArray ba : m_publicData) {
         stream.writeString(ba);
     }
 
@@ -71,11 +70,16 @@ QString OpenSSHKey::getPublicKey()
 
     stream.writeString(m_type);
 
-    foreach (QByteArray ba, m_publicData) {
+    for (QByteArray ba : m_publicData) {
         stream.writeString(ba);
     }
 
     return m_type + " " + QString::fromLatin1(publicKey.toBase64()) + " " + m_comment;
+}
+
+QString OpenSSHKey::getErrorString()
+{
+    return m_error;
 }
 
 void OpenSSHKey::setType(QString type)
@@ -98,9 +102,48 @@ void OpenSSHKey::setComment(QString comment)
     m_comment = comment;
 }
 
-QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QString &passphrase)
+bool OpenSSHKey::parsePEM(const QByteArray &in, QByteArray &out)
 {
-    QList<QSharedPointer<OpenSSHKey>> sshKeys;
+    QString pem = QString::fromLatin1(in);
+    QStringList rows = pem.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+
+    QString begin = rows.first();
+    QString end = rows.last();
+
+    QRegExp beginEx("-----BEGIN (.+)-----");
+    QRegExp endEx("-----END (.+)-----");
+
+    if (!beginEx.exactMatch(begin) || !endEx.exactMatch(end)) {
+        m_error = "PEM header or footer missing, is this really an OpenSSH key file?";
+        return false;
+    }
+
+    if (beginEx.cap(1) != endEx.cap(1)) {
+        m_error = "PEM header/footer mismatch, possible garbage at the end of the file";
+        return false;
+    }
+
+    if (beginEx.cap(1) != "OPENSSH PRIVATE KEY") {
+        m_error = "This is not an OpenSSH key, only new type style keys are supported";
+        return false;
+    }
+
+    rows.removeFirst();
+    rows.removeLast();
+
+    out = QByteArray::fromBase64(rows.join("").toLatin1());
+
+    if (out.length() == 0) {
+        m_error = "Base64 decoding failed";
+        return false;
+    }
+
+    return true;
+}
+
+bool OpenSSHKey::parse(const QByteArray &in, const QString &passphrase)
+{
+    QByteArray data;
     QByteArray magic;
     QString cipherName;
     QString kdfName;
@@ -108,14 +151,17 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
     quint32 numberOfKeys;
     QByteArray privateKeys;
 
+    if (!parsePEM(in, data))
+        return false;
+
     BinaryStream stream(&data);
 
     magic.resize(15);
     stream.read(magic);
 
     if (QString::fromLatin1(magic) != "openssh-key-v1") {
-        qWarning() << "Invalid magic" << magic;
-        return sshKeys;
+        m_error = "Key file magic header id invalid";
+        return false;
     }
 
     stream.readString(cipherName);
@@ -123,14 +169,19 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
     stream.readString(kdfOptions);
     stream.read(numberOfKeys);
 
+    if (numberOfKeys == 0) {
+        m_error = "Found zero keys";
+        return false;
+    }
+
     for (quint32 i = 0; i < numberOfKeys; i++) {
         QByteArray publicKey;
         stream.readString(publicKey);
-        BinaryStream publicStream(&publicKey);
 
-        OpenSSHKey *key = new OpenSSHKey();
-        key->readPublic(publicStream);
-        sshKeys.append(QSharedPointer<OpenSSHKey>(key));
+        if (i == 0) {
+            BinaryStream publicStream(&publicKey);
+            readPublic(publicStream);
+        }
     }
 
     // padded list of keys
@@ -149,8 +200,8 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
         cipher = GCRY_CIPHER_AES256;
         cipherMode = GCRY_CIPHER_MODE_CBC;
     } else if (cipherName != "none") {
-        qWarning() << "cipherName" << cipherName;
-        return sshKeys;
+        m_error = "Unknown cipher: " + cipherName;
+        return false;
     }
 
     key.fill(0, keyLen + ivLen);
@@ -168,8 +219,8 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
 
         bcrypt_pbkdf(phraseData, salt, key, rounds);
     } else if (kdfName != "none") {
-        qWarning() << "Unhandled kdfName" << kdfName;
-        return sshKeys;
+        m_error = "Unknown KDF: "  + kdfName;
+        return false;
     }
 
     if (cipher > 0) {
@@ -194,24 +245,23 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
     keyStream.read(checkInt2);
 
     if (checkInt1 != checkInt2) {
-        qWarning() << "Decryption failed, check integers don't match" << checkInt1 << checkInt2;
-        return sshKeys;
+        m_error = "Key decryption failed, wrong passphrase?";
+        return false;
     }
 
-    for (quint32 i = 0; i < numberOfKeys; i++) {
-        OpenSSHKey *key = sshKeys.at(i).data();
-        key->readPrivate(keyStream);
-    }
-
-    return sshKeys;
+    return readPrivate(keyStream);
 }
 
 bool OpenSSHKey::readPublic(BinaryStream &stream)
 {
-    int keyParts;
     m_publicData.clear();
-    stream.readString(m_type);
 
+    if (!stream.readString(m_type)) {
+        m_error = "Unexpected EOF while reading public key";
+        return false;
+    }
+
+    int keyParts;
     if (m_type == "ssh-dss") {
         keyParts = 4;
     } else if (m_type == "ssh-rsa") {
@@ -221,13 +271,18 @@ bool OpenSSHKey::readPublic(BinaryStream &stream)
     } else if (m_type == "ssh-ed25519") {
         keyParts = 1;
     } else {
-        qWarning() << "Unknown OpenSSH public key type" << m_type;
+        m_error = "Unknown key type: " + m_type;
         return false;
     }
 
     for (int i = 0; i < keyParts; i++) {
         QByteArray t;
-        stream.readString(t);
+
+        if (!stream.readString(t)) {
+            m_error = "Unexpected EOF while reading public key";
+            return false;
+        }
+
         m_publicData.append(t);
     }
 
@@ -236,10 +291,14 @@ bool OpenSSHKey::readPublic(BinaryStream &stream)
 
 bool OpenSSHKey::readPrivate(BinaryStream &stream)
 {
-    int keyParts;
     m_privateData.clear();
-    stream.readString(m_type);
 
+    if (!stream.readString(m_type)) {
+            m_error = "Unexpected EOF while reading private key";
+            return false;
+    }
+
+    int keyParts;
     if (m_type == "ssh-dss") {
         keyParts = 5;
     } else if (m_type == "ssh-rsa") {
@@ -249,30 +308,46 @@ bool OpenSSHKey::readPrivate(BinaryStream &stream)
     } else if (m_type == "ssh-ed25519") {
         keyParts = 2;
     } else {
-        qWarning() << "Unknown OpenSSH key type" << m_type;
+        m_error = "Unknown key type: " + m_type;
         return false;
     }
 
     for (int i = 0; i < keyParts; i++) {
         QByteArray t;
-        stream.readString(t);
+
+        if (!stream.readString(t)) {
+            m_error = "Unexpected EOF while reading private key";
+            return false;
+        }
+
         m_privateData.append(t);
     }
 
-    stream.readString(m_comment);
+    if (!stream.readString(m_comment)) {
+        m_error = "Unexpected EOF while reading private key";
+        return false;
+    }
 
     return true;
 }
 
 bool OpenSSHKey::writePublic(BinaryStream &stream)
 {
-    if (m_publicData.length() == 0)
+    if (m_publicData.length() == 0) {
+        m_error = "Can't write public key as it is empty";
         return false;
+    }
 
-    stream.writeString(m_type);
+    if (!stream.writeString(m_type)) {
+        m_error = "Unexpected EOF when writing public key";
+        return false;
+    }
 
-    foreach (QByteArray t, m_publicData) {
-        stream.writeString(t);
+    for (QByteArray t : m_publicData) {
+        if (!stream.writeString(t)) {
+            m_error = "Unexpected EOF when writing public key";
+            return false;
+        }
     }
 
     return true;
@@ -280,15 +355,27 @@ bool OpenSSHKey::writePublic(BinaryStream &stream)
 
 bool OpenSSHKey::writePrivate(BinaryStream &stream)
 {
-    if (m_privateData.length() == 0)
+    if (m_privateData.length() == 0) {
+        m_error = "Can't write private key as it is empty";
         return false;
-
-    stream.writeString(m_type);
-
-    foreach (QByteArray t, m_privateData) {
-        stream.writeString(t);
     }
 
-    stream.writeString(m_comment);
+    if (!stream.writeString(m_type)) {
+        m_error = "Unexpected EOF when writing private key";
+        return false;
+    }
+
+    for (QByteArray t : m_privateData) {
+        if (!stream.writeString(t)) {
+            m_error = "Unexpected EOF when writing private key";
+            return false;
+        }
+    }
+
+    if (!stream.writeString(m_comment)) {
+        m_error = "Unexpected EOF when writing private key";
+        return false;
+    }
+
     return true;
 }
