@@ -48,10 +48,10 @@ QString OpenSSHKey::getFingerprint()
     QByteArray publicKey;
     BinaryStream stream(&publicKey);
 
-    stream.writePack(m_type);
+    stream.writeString(m_type);
 
     foreach (QByteArray ba, m_publicData) {
-        stream.writePack(ba);
+        stream.writeString(ba);
     }
 
     QByteArray rawHash = QCryptographicHash::hash(publicKey, QCryptographicHash::Sha256);
@@ -69,10 +69,10 @@ QString OpenSSHKey::getPublicKey()
     QByteArray publicKey;
     BinaryStream stream(&publicKey);
 
-    stream.writePack(m_type);
+    stream.writeString(m_type);
 
     foreach (QByteArray ba, m_publicData) {
-        stream.writePack(ba);
+        stream.writeString(ba);
     }
 
     return m_type + " " + QString::fromLatin1(publicKey.toBase64()) + " " + m_comment;
@@ -118,14 +118,14 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
         return sshKeys;
     }
 
-    stream.readPack(cipherName);
-    stream.readPack(kdfName);
-    stream.readPack(kdfOptions);
+    stream.readString(cipherName);
+    stream.readString(kdfName);
+    stream.readString(kdfOptions);
     stream.read(numberOfKeys);
 
     for (quint32 i = 0; i < numberOfKeys; i++) {
         QByteArray publicKey;
-        stream.readPack(publicKey);
+        stream.readString(publicKey);
         BinaryStream publicStream(&publicKey);
 
         OpenSSHKey *key = new OpenSSHKey();
@@ -134,7 +134,7 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
     }
 
     // padded list of keys
-    stream.readPack(privateKeys);
+    stream.readString(privateKeys);
     BinaryStream keyStream(&privateKeys);
 
     QByteArray key;
@@ -161,7 +161,7 @@ QList<QSharedPointer<OpenSSHKey>> OpenSSHKey::parse(QByteArray &data, const QStr
         QByteArray salt;
         quint32 rounds;
 
-        optionStream.readPack(salt);
+        optionStream.readString(salt);
         optionStream.read(rounds);
 
         QByteArray phraseData = passphrase.toLatin1();
@@ -210,7 +210,7 @@ bool OpenSSHKey::readPublic(BinaryStream &stream)
 {
     int keyParts;
     m_publicData.clear();
-    stream.readPack(m_type);
+    stream.readString(m_type);
 
     if (m_type == "ssh-dss") {
         keyParts = 4;
@@ -227,7 +227,7 @@ bool OpenSSHKey::readPublic(BinaryStream &stream)
 
     for (int i = 0; i < keyParts; i++) {
         QByteArray t;
-        stream.readPack(t);
+        stream.readString(t);
         m_publicData.append(t);
     }
 
@@ -238,7 +238,7 @@ bool OpenSSHKey::readPrivate(BinaryStream &stream)
 {
     int keyParts;
     m_privateData.clear();
-    stream.readPack(m_type);
+    stream.readString(m_type);
 
     if (m_type == "ssh-dss") {
         keyParts = 5;
@@ -255,11 +255,11 @@ bool OpenSSHKey::readPrivate(BinaryStream &stream)
 
     for (int i = 0; i < keyParts; i++) {
         QByteArray t;
-        stream.readPack(t);
+        stream.readString(t);
         m_privateData.append(t);
     }
 
-    stream.readPack(m_comment);
+    stream.readString(m_comment);
 
     return true;
 }
@@ -269,10 +269,10 @@ bool OpenSSHKey::writePublic(BinaryStream &stream)
     if (m_publicData.length() == 0)
         return false;
 
-    stream.writePack(m_type);
+    stream.writeString(m_type);
 
     foreach (QByteArray t, m_publicData) {
-        stream.writePack(t);
+        stream.writeString(t);
     }
 
     return true;
@@ -283,12 +283,12 @@ bool OpenSSHKey::writePrivate(BinaryStream &stream)
     if (m_privateData.length() == 0)
         return false;
 
-    stream.writePack(m_type);
+    stream.writeString(m_type);
 
     foreach (QByteArray t, m_privateData) {
-        stream.writePack(t);
+        stream.writeString(t);
     }
 
-    stream.writePack(m_comment);
+    stream.writeString(m_comment);
     return true;
 }

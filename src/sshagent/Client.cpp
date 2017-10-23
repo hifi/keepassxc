@@ -51,7 +51,7 @@ bool Client::addIdentity(OpenSSHKey &key, quint32 lifetime)
         request.write(lifetime);
     }
 
-    stream.writePack(requestData);
+    stream.writeString(requestData);
     stream.flush();
 
     QByteArray responseData;
@@ -75,11 +75,15 @@ QList<QSharedPointer<OpenSSHKey>> Client::getIdentities()
     }
 
     // write identities request
-    stream.writePack(SSH_AGENTC_REQUEST_IDENTITIES);
+    QByteArray requestData;
+    BinaryStream requestStream(&requestData);
+    requestStream.write(SSH_AGENTC_REQUEST_IDENTITIES);
+
+    stream.writeString(requestData);
 
     // read complete response packet
     QByteArray responseData;
-    stream.readPack(responseData);
+    stream.readString(responseData);
 
     BinaryStream responseStream(&responseData);
 
@@ -94,8 +98,8 @@ QList<QSharedPointer<OpenSSHKey>> Client::getIdentities()
             QByteArray keyData;
             QString keyComment;
 
-            responseStream.readPack(keyData);
-            responseStream.readPack(keyComment);
+            responseStream.readString(keyData);
+            responseStream.readString(keyComment);
 
             BinaryStream keyStream(&keyData);
 
@@ -131,9 +135,9 @@ bool Client::removeIdentity(OpenSSHKey& key)
     key.writePublic(keyStream);
 
     request.write(SSH_AGENTC_REMOVE_IDENTITY);
-    request.writePack(keyData);
+    request.writeString(keyData);
 
-    stream.writePack(requestData);
+    stream.writeString(requestData);
     stream.flush();
 
     QByteArray responseData;

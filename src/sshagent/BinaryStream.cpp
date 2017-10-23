@@ -117,7 +117,7 @@ bool BinaryStream::read(quint8 &i)
     return read(reinterpret_cast<char *>(&i), sizeof(i));
 }
 
-bool BinaryStream::readPack(QByteArray &ba)
+bool BinaryStream::readString(QByteArray &ba)
 {
    quint32 length;
 
@@ -132,11 +132,11 @@ bool BinaryStream::readPack(QByteArray &ba)
    return true;
 }
 
-bool BinaryStream::readPack(QString &str)
+bool BinaryStream::readString(QString &str)
 {
     QByteArray ba;
 
-    if (!readPack(ba))
+    if (!readString(ba))
         return false;
 
     str = str.fromLatin1(ba);
@@ -175,12 +175,18 @@ bool BinaryStream::write(quint32 i)
     return write(reinterpret_cast<char *>(&i), sizeof(i));
 }
 
+bool BinaryStream::write(quint16 i)
+{
+    i = qToBigEndian<quint16>(i);
+    return write(reinterpret_cast<char *>(&i), sizeof(i));
+}
+
 bool BinaryStream::write(quint8 i)
 {
     return write(reinterpret_cast<char *>(&i), sizeof(i));
 }
 
-bool BinaryStream::writePack(const QByteArray &ba)
+bool BinaryStream::writeString(const QByteArray &ba)
 {
     if (!write(static_cast<quint32>(ba.length())))
         return false;
@@ -190,17 +196,7 @@ bool BinaryStream::writePack(const QByteArray &ba)
     return true;
 }
 
-bool BinaryStream::writePack(const QString &s)
+bool BinaryStream::writeString(const QString &s)
 {
-    return writePack(s.toLatin1());
-}
-
-bool BinaryStream::writePack(quint8 i)
-{
-    if (!write(static_cast<quint32>(sizeof(i))))
-        return false;
-    if (!write(i))
-        return false;
-
-    return true;
+    return writeString(s.toLatin1());
 }
