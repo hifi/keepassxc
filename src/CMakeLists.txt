@@ -206,12 +206,10 @@ set(autotype_SOURCES
 
 set(sshagent_SOURCES
     sshagent/Agent.cpp
-    sshagent/ASN1Key.cpp
     sshagent/BinaryStream.cpp
     sshagent/Client.cpp
     sshagent/KeeAgentSettings.cpp
     sshagent/OpenSSHKey.cpp
-    sshagent/PEM.cpp
     sshagent/blowfish.c
     sshagent/bcrypt_pbkdf.cpp
 )

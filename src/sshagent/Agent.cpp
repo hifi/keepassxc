@@ -16,7 +16,6 @@
  */
 
 #include "Agent.h"
-#include "sshagent/PEM.h"
 #include "sshagent/KeeAgentSettings.h"
 
 Agent::Agent(DatabaseWidget *parent) : QObject(parent), m_widget(parent)
@@ -74,15 +73,22 @@ QList<QSharedPointer<OpenSSHKey>> Agent::getKeys(Database *db)
 
             if (settings.selectedType() == "attachment") {
                 QByteArray keyData = e->attachments()->value(settings.attachmentName());
-                PEM pem(keyData);
-                pem.parse();
-                keys.append(pem.getKeys(e->password()));
+                OpenSSHKey *key = new OpenSSHKey();
+                if (key->parse(keyData, e->password())) {
+                    keys.append(QSharedPointer<OpenSSHKey>(key));
+                } else {
+                    delete key;
+                }
             } else if (settings.fileName().length() > 0) {
                 QFile file(settings.fileName());
-                if (file.open(QIODevice::ReadOnly)) {
-                    PEM pem(file.readAll());
-                    pem.parse();
-                    keys.append(pem.getKeys(e->password()));
+                if (!file.open(QIODevice::ReadOnly))
+                    continue;
+
+                OpenSSHKey *key = new OpenSSHKey();
+                if (key->parse(file.readAll(), e->password())) {
+                    keys.append(QSharedPointer<OpenSSHKey>(key));
+                } else {
+                    delete key;
                 }
             }
         }
