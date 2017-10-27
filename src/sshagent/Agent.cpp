@@ -21,13 +21,11 @@
 Agent::Agent(DatabaseWidget *parent) : QObject(parent), m_widget(parent)
 {
     connect(parent, SIGNAL(currentModeChanged(DatabaseWidget::Mode)), this, SLOT(databaseModeChanged(DatabaseWidget::Mode)));
-    m_client = new Client();
 }
 
 Agent::~Agent()
 {
     emit databaseModeChanged(DatabaseWidget::LockedMode);
-    delete m_client;
 }
 
 void Agent::databaseModeChanged(DatabaseWidget::Mode mode)
@@ -36,7 +34,7 @@ void Agent::databaseModeChanged(DatabaseWidget::Mode mode)
 
     if (mode == DatabaseWidget::LockedMode && m_sentKeys) {
         for (QSharedPointer<OpenSSHKey> e : keys) {
-            m_client->removeIdentity(*e.data());
+            Client::instance()->removeIdentity(*e.data());
         }
 
         m_sentKeys = false;
@@ -46,7 +44,7 @@ void Agent::databaseModeChanged(DatabaseWidget::Mode mode)
             || mode == DatabaseWidget::EditMode)
             && !m_sentKeys) {
         for (QSharedPointer<OpenSSHKey> e : keys) {
-            m_client->addIdentity(*e.data());
+            Client::instance()->addIdentity(*e.data());
         }
 
         m_sentKeys = true;

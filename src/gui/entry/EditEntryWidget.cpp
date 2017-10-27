@@ -317,8 +317,12 @@ void EditEntryWidget::updateSSHAgentKeyInfo()
         m_sshAgentUi->commentEdit->setText(key.comment());
         m_sshAgentUi->publicKeyEdit->document()->setPlainText(key.publicKey());
 
-        m_sshAgentUi->addToAgentButton->setEnabled(true);
-        m_sshAgentUi->removeFromAgentButton->setEnabled(true);
+        // enable agent buttons only if we have an agent running
+        if (Client::instance()->hasAgent()) {
+            m_sshAgentUi->addToAgentButton->setEnabled(true);
+            m_sshAgentUi->removeFromAgentButton->setEnabled(true);
+        }
+
         m_sshAgentUi->copyToClipboardButton->setEnabled(true);
     }
 }
@@ -389,7 +393,6 @@ OpenSSHKey EditEntryWidget::getPrivateKey()
 void EditEntryWidget::addKeyToAgent()
 {
     OpenSSHKey key = getPrivateKey();
-    Client client;
 
     quint32 lifetime = 0;
     quint32 confirm = m_sshAgentUi->requireUserConfirmationCheckBox->isChecked();
@@ -397,14 +400,13 @@ void EditEntryWidget::addKeyToAgent()
     if (m_sshAgentUi->lifetimeCheckBox->isChecked())
         lifetime = m_sshAgentUi->lifetimeSpinBox->value();
 
-    client.addIdentity(key, lifetime, confirm);
+    Client::instance()->addIdentity(key, lifetime, confirm);
 }
 
 void EditEntryWidget::removeKeyFromAgent()
 {
     OpenSSHKey key = getPrivateKey();
-    Client client;
-    client.removeIdentity(key);
+    Client::instance()->removeIdentity(key);
 }
 
 void EditEntryWidget::copyPublicKey()

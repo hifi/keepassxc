@@ -29,6 +29,13 @@ namespace SSHAgent {
 class Client
 {
 public:
+    static Client* instance();
+
+    bool hasAgent();
+    bool addIdentity(OpenSSHKey&, quint32 lifetime = 0, bool confirm = false);
+    bool removeIdentity(OpenSSHKey&);
+
+private:
     const quint8 SSH_AGENT_FAILURE              = 5;
     const quint8 SSH_AGENT_SUCCESS              = 6;
     const quint8 SSH_AGENTC_REQUEST_IDENTITIES  = 11;
@@ -40,15 +47,9 @@ public:
     const quint8 SSH_AGENT_CONSTRAIN_LIFETIME   = 1;
     const quint8 SSH_AGENT_CONSTRAIN_CONFIRM    = 2;
 
-    Client() : m_socketPath(environmentSocketPath()) { }
-    Client(QString socketPath) : m_socketPath(socketPath) { }
+    Client();
 
-    static QString environmentSocketPath();
-
-    bool addIdentity(OpenSSHKey&, quint32 lifetime = 0, bool confirm = false);
-    bool removeIdentity(OpenSSHKey&);
-
-private:
+    static Client m_instance;
     QString m_socketPath;
 };
 

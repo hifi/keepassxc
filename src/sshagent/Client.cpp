@@ -19,9 +19,21 @@
 #include "BinaryStream.h"
 #include <QtNetwork>
 
-QString Client::environmentSocketPath()
+Client Client::m_instance;
+
+Client::Client()
 {
-    return QProcessEnvironment::systemEnvironment().value("SSH_AUTH_SOCK");
+    m_socketPath = QProcessEnvironment::systemEnvironment().value("SSH_AUTH_SOCK");
+}
+
+Client* Client::instance()
+{
+    return &m_instance;
+}
+
+bool Client::hasAgent()
+{
+    return (m_socketPath.length() > 0);
 }
 
 bool Client::addIdentity(OpenSSHKey &key, quint32 lifetime, bool confirm)
