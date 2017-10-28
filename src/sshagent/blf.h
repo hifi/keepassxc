@@ -34,6 +34,18 @@
 #ifndef _BLF_H_
 #define _BLF_H_
 
+#ifdef _WIN32
+
+#include <stdint.h>
+
+typedef uint32_t u_int32_t;
+typedef uint16_t u_int16_t;
+typedef uint8_t u_int8_t;
+
+#define bzero(p,s) memset(p, 0, s)
+
+#endif
+
 #if !defined(HAVE_BCRYPT_PBKDF) && !defined(HAVE_BLH_H)
 
 /* Schneier specifies a maximum key length of 56 bytes.

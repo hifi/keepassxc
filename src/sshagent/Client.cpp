@@ -17,13 +17,20 @@
 
 #include "Client.h"
 #include "BinaryStream.h"
+
+#ifndef _WIN32
 #include <QtNetwork>
+#else
+#include <windows.h>
+#endif
 
 Client Client::m_instance;
 
 Client::Client()
 {
+#ifndef _WIN32
     m_socketPath = QProcessEnvironment::systemEnvironment().value("SSH_AUTH_SOCK");
+#endif
 }
 
 Client* Client::instance()
@@ -33,11 +40,16 @@ Client* Client::instance()
 
 bool Client::hasAgent()
 {
+#ifndef _WIN32
     return (m_socketPath.length() > 0);
+#else
+    return (FindWindowA("Pageant", "Pageant") != nullptr);
+#endif
 }
 
-bool Client::addIdentity(OpenSSHKey &key, quint32 lifetime, bool confirm)
+bool Client::sendMessage(const QByteArray &in, QByteArray &out)
 {
+#ifndef _WIN32
     QLocalSocket socket;
     BinaryStream stream(&socket);
 
@@ -46,6 +58,68 @@ bool Client::addIdentity(OpenSSHKey &key, quint32 lifetime, bool confirm)
         return false;
     }
 
+    stream.writeString(in);
+    stream.flush();
+
+    QByteArray responseData;
+    if (!stream.read(out))
+        return false;
+
+    return true;
+#else
+    HWND hWnd = FindWindowA("Pageant", "Pageant");
+
+    if (!hWnd)
+        return false;
+
+    if (in.length() > AGENT_MAX_MSGLEN - 4)
+        return false;
+
+    QByteArray mapName = (QString("SSHAgentRequest") + reinterpret_cast<intptr_t>(QThread::currentThreadId())).toLatin1();
+
+    HANDLE handle = CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, AGENT_MAX_MSGLEN, mapName.data());
+
+    if (!handle)
+        return false;
+
+    LPVOID ptr = MapViewOfFile(handle, FILE_MAP_WRITE, 0, 0, 0);
+
+    if (!ptr) {
+        CloseHandle(handle);
+        return false;
+    }
+
+    quint32 *requestLength = reinterpret_cast<quint32*>(ptr);
+    void *requestData = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + 4);
+
+    *requestLength = qToBigEndian<quint32>(in.length());
+    memcpy(requestData, in.data(), in.length());
+
+    COPYDATASTRUCT data;
+    data.dwData = AGENT_COPYDATA_ID;
+    data.cbData = mapName.length() + 1;
+    data.lpData = reinterpret_cast<LPVOID>(mapName.data());
+
+    LRESULT res = SendMessageA(hWnd, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&data));
+
+    if (res) {
+        quint32 responseLength = qFromBigEndian<quint32>(*requestLength);
+        if (responseLength <= AGENT_MAX_MSGLEN) {
+            out.resize(responseLength);
+            memcpy(out.data(), requestData, responseLength);
+        }
+    }
+
+    UnmapViewOfFile(ptr);
+    CloseHandle(handle);
+
+    return (res > 0);
+#endif
+}
+
+
+bool Client::addIdentity(OpenSSHKey &key, quint32 lifetime, bool confirm)
+{
     QByteArray requestData;
     BinaryStream request(&requestData);
 
@@ -61,11 +135,8 @@ bool Client::addIdentity(OpenSSHKey &key, quint32 lifetime, bool confirm)
         request.write(SSH_AGENT_CONSTRAIN_CONFIRM);
     }
 
-    stream.writeString(requestData);
-    stream.flush();
-
     QByteArray responseData;
-    stream.read(responseData);
+    sendMessage(requestData, responseData);
 
     if (responseData.length() < 1 || static_cast<quint8>(responseData[0]) != SSH_AGENT_SUCCESS)
         return false;
@@ -75,14 +146,6 @@ bool Client::addIdentity(OpenSSHKey &key, quint32 lifetime, bool confirm)
 
 bool Client::removeIdentity(OpenSSHKey& key)
 {
-    QLocalSocket socket;
-    BinaryStream stream(&socket);
-
-    socket.connectToServer(m_socketPath);
-    if (!socket.waitForConnected(500)) {
-        return false;
-    }
-
     QByteArray requestData;
     BinaryStream request(&requestData);
 
@@ -93,11 +156,8 @@ bool Client::removeIdentity(OpenSSHKey& key)
     request.write(SSH_AGENTC_REMOVE_IDENTITY);
     request.writeString(keyData);
 
-    stream.writeString(requestData);
-    stream.flush();
-
     QByteArray responseData;
-    stream.read(responseData);
+    sendMessage(requestData, responseData);
 
     if (responseData.length() < 1 || static_cast<quint8>(responseData[0]) != SSH_AGENT_SUCCESS)
         return false;

@@ -47,10 +47,18 @@ private:
     const quint8 SSH_AGENT_CONSTRAIN_LIFETIME   = 1;
     const quint8 SSH_AGENT_CONSTRAIN_CONFIRM    = 2;
 
+
     Client();
+    bool sendMessage(const QByteArray &in, QByteArray &out);
 
     static Client m_instance;
+
+#ifndef _WIN32
     QString m_socketPath;
+#else
+    const int AGENT_MAX_MSGLEN = 8192;
+    const quint32 AGENT_COPYDATA_ID = 0x804e50ba;
+#endif
 };
 
 #endif // CLIENT_H
