@@ -29,6 +29,7 @@ parts:
       - -DWITH_XC_AUTOTYPE=ON
       - -DWITH_XC_HTTP=ON
       - -DWITH_XC_YUBIKEY=ON
+      - -DWITH_XC_BROWSER=ON
     build-packages:
       - g++
       - libgcrypt20-dev
@@ -41,6 +42,7 @@ parts:
       - libxtst-dev
       - libyubikey-dev
       - libykpers-1-dev
+      - libsodium-dev
     install: |
       sed -i 's|Icon=keepassxc|Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/keepassxc.png|g' $SNAPCRAFT_PART_INSTALL/usr/share/applications/org.keepassxc.KeePassXC.desktop
     after: [desktop-qt5]

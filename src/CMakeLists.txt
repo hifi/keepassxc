@@ -180,10 +180,18 @@ add_feature_info(AutoType WITH_XC_AUTOTYPE "Automatic password typing")
 add_feature_info(KeePassHTTP WITH_XC_HTTP "Browser integration compatible with ChromeIPass and PassIFox")
 add_feature_info(YubiKey WITH_XC_YUBIKEY "YubiKey HMAC-SHA1 challenge-response")
 add_feature_info(SSHAgent WITH_XC_SSHAGENT "SSH agent integration compatible with KeeAgent")
+add_feature_info(keepassxc-browser WITH_XC_BROWSER "KeePassXC browser support with keepassxc-browser")
 
 add_subdirectory(http)
 if(WITH_XC_HTTP)
     set(keepasshttp_LIB keepasshttp qhttp Qt5::Network)
+endif()
+
+set(BROWSER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/browser)
+add_subdirectory(browser)
+add_subdirectory(proxy)
+if(WITH_XC_BROWSER)
+    set(keepassxcbrowser_LIB keepassxcbrowser)
 endif()
 
 add_subdirectory(autotype)
@@ -229,6 +237,7 @@ add_library(keepassx_core STATIC ${keepassx_SOURCES})
 set_target_properties(keepassx_core PROPERTIES COMPILE_DEFINITIONS KEEPASSX_BUILDING_CORE)
 target_link_libraries(keepassx_core
                       ${keepasshttp_LIB}
+                      ${keepassxcbrowser_LIB}
                       ${autotype_LIB}
                       ${sshagent_LIB}
                       ${YUBIKEY_LIBRARIES}
@@ -295,6 +304,15 @@ if(APPLE AND WITH_APP_BUNDLE)
                      COMMAND ${MACDEPLOYQT_EXE} ${PROGNAME}.app
                      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/src
                      COMMENT "Deploying app bundle")
+
+  if(WITH_XC_BROWSER)
+    set(PROXY_BINARY_DIR "${CMAKE_BINARY_DIR}/src/proxy/keepassxc-proxy")
+    add_custom_command(TARGET ${PROGNAME}
+                       POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} -E copy ${PROXY_BINARY_DIR} ${PROGNAME}.app/Contents/MacOS/keepassxc-proxy
+                       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/src
+                       COMMENT "Copying keepassxc-proxy inside the application")
+  endif()
 endif()
 
 install(TARGETS ${PROGNAME}
