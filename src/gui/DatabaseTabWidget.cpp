@@ -90,12 +90,12 @@ void DatabaseTabWidget::newDatabase()
     Database* db = new Database();
     db->rootGroup()->setName(tr("Root"));
     dbStruct.dbWidget = new DatabaseWidget(db, this);
-    
+
     CompositeKey emptyKey;
     db->setKey(emptyKey);
 
     insertDatabase(db, dbStruct);
-    
+
     if (!saveDatabaseAs(db)) {
         closeDatabase(db);
         return;
@@ -129,7 +129,12 @@ void DatabaseTabWidget::openDatabase(const QString& fileName, const QString& pw,
     while (i.hasNext()) {
         i.next();
         if (i.value().canonicalFilePath == canonicalFilePath) {
-            setCurrentIndex(databaseIndex(i.key()));
+            if (!i.value().dbWidget->dbHasKey() && !(pw.isNull() && keyFile.isEmpty())) {
+                // If the database is locked and a pw or keyfile is provided, unlock it
+                i.value().dbWidget->switchToOpenDatabase(i.value().filePath, pw, keyFile);
+            } else {
+                setCurrentIndex(databaseIndex(i.key()));
+            }
             return;
         }
     }
@@ -181,6 +186,7 @@ void DatabaseTabWidget::openDatabase(const QString& fileName, const QString& pw,
                     lockFile->tryLock();
                 }
             } else {
+                delete lockFile;
                 return;
             }
         }
@@ -203,7 +209,7 @@ void DatabaseTabWidget::openDatabase(const QString& fileName, const QString& pw,
 
     updateLastDatabases(dbStruct.filePath);
 
-    if (!pw.isNull() || !keyFile.isEmpty()) {
+    if (!(pw.isNull() && keyFile.isEmpty())) {
         dbStruct.dbWidget->switchToOpenDatabase(dbStruct.filePath, pw, keyFile);
     }
     else {
@@ -292,8 +298,7 @@ bool DatabaseTabWidget::closeDatabase(Database* db)
             if (!saveDatabase(db)) {
                 return false;
             }
-        }
-        else {
+        } else if (dbStruct.dbWidget->currentMode() != DatabaseWidget::LockedMode) {
             QMessageBox::StandardButton result =
                 MessageBox::question(
                 this, tr("Save changes?"),
@@ -301,10 +306,9 @@ bool DatabaseTabWidget::closeDatabase(Database* db)
                 QMessageBox::Yes | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Yes);
             if (result == QMessageBox::Yes) {
                 if (!saveDatabase(db)) {
-                        return false;
+                    return false;
                 }
-            }
-            else if (result == QMessageBox::Cancel) {
+            } else if (result == QMessageBox::Cancel) {
                 return false;
             }
         }
@@ -349,8 +353,13 @@ bool DatabaseTabWidget::saveDatabase(Database* db)
 {
     DatabaseManagerStruct& dbStruct = m_dbList[db];
 
-    if (dbStruct.saveToFilename) {
+    if (dbStruct.dbWidget->currentMode() == DatabaseWidget::LockedMode) {
+        // Never allow saving a locked database; it causes corruption
+        // We return true since a save is not required
+        return true;
+    }
 
+    if (dbStruct.saveToFilename) {
         dbStruct.dbWidget->blockAutoReload(true);
         QString errorMessage = db->saveToFile(dbStruct.canonicalFilePath);
         dbStruct.dbWidget->blockAutoReload(false);
@@ -363,11 +372,12 @@ bool DatabaseTabWidget::saveDatabase(Database* db)
             emit messageDismissTab();
             return true;
         } else {
+            dbStruct.modified = true;
+            updateTabName(db);
             emit messageTab(tr("Writing the database failed.").append("\n").append(errorMessage),
                             MessageWidget::Error);
             return false;
         }
-
     } else {
         return saveDatabaseAs(db);
     }
@@ -531,6 +541,16 @@ bool DatabaseTabWidget::readOnly(int index)
     return indexDatabaseManagerStruct(index).readOnly;
 }
 
+bool DatabaseTabWidget::canSave(int index)
+{
+    if (index == -1) {
+        index = currentIndex();
+    }
+
+    const DatabaseManagerStruct& dbStruct = indexDatabaseManagerStruct(index);
+    return !dbStruct.saveToFilename || (dbStruct.modified && !dbStruct.readOnly);
+}
+
 bool DatabaseTabWidget::isModified(int index)
 {
     if (index == -1) {
@@ -604,6 +624,36 @@ void DatabaseTabWidget::updateTabNameFromDbWidgetSender()
 
     DatabaseWidget* dbWidget = static_cast<DatabaseWidget*>(sender());
     updateTabName(databaseFromDatabaseWidget(dbWidget));
+
+    Database* db = dbWidget->database();
+    Group *autoload = db->rootGroup()->findChildByName("AutoOpen");
+    if (autoload) {
+        const DatabaseManagerStruct& dbStruct = m_dbList.value(db);
+        QFileInfo dbpath(dbStruct.canonicalFilePath);
+        QDir dbFolder(dbpath.canonicalPath());
+        for (auto entry : autoload->entries()) {
+            if (entry->url().isEmpty() || entry->password().isEmpty()) {
+                continue;
+            }
+            QFileInfo filepath;
+            if (entry->url().startsWith("file://")) {
+                QUrl url(entry->url());
+                filepath.setFile(url.toLocalFile());
+            }
+            else {
+                filepath.setFile(entry->url());
+                if (filepath.isRelative()) {
+                    filepath.setFile(dbFolder, entry->url());
+                }
+            }
+
+            if (!filepath.isFile()) {
+                continue;
+            }
+
+            openDatabase(filepath.canonicalFilePath(), entry->password(), "");
+        }
+    }
 }
 
 int DatabaseTabWidget::databaseIndex(Database* db)

@@ -114,7 +114,6 @@ void Config::init(const QString& fileName)
     m_defaults.insert("AutoSaveAfterEveryChange", false);
     m_defaults.insert("AutoReloadOnChange", true);
     m_defaults.insert("AutoSaveOnExit", false);
-    m_defaults.insert("ShowToolbar", true);
     m_defaults.insert("SearchLimitGroup", false);
     m_defaults.insert("MinimizeOnCopy", false);
     m_defaults.insert("UseGroupIconOnEntryCreation", false);
@@ -122,7 +121,7 @@ void Config::init(const QString& fileName)
     m_defaults.insert("AutoTypeEntryURLMatch", true);
     m_defaults.insert("AutoTypeDelay", 25);
     m_defaults.insert("UseGroupIconOnEntryCreation", true);
-    m_defaults.insert("IgnoreGroupExpansion", false);
+    m_defaults.insert("IgnoreGroupExpansion", true);
     m_defaults.insert("security/clearclipboard", true);
     m_defaults.insert("security/clearclipboardtimeout", 10);
     m_defaults.insert("security/lockdatabaseidle", false);
@@ -131,6 +130,7 @@ void Config::init(const QString& fileName)
     m_defaults.insert("security/lockdatabasescreenlock", true);
     m_defaults.insert("security/passwordsrepeat", false);
     m_defaults.insert("security/passwordscleartext", false);
+    m_defaults.insert("security/hidepassworddetails", true);
     m_defaults.insert("security/autotypeask", true);
     m_defaults.insert("security/IconDownloadFallbackToGoogle", false);
     m_defaults.insert("GUI/Language", "system");

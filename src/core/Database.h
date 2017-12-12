@@ -27,6 +27,7 @@
 #include "keys/CompositeKey.h"
 
 class Entry;
+enum class EntryReferenceType;
 class Group;
 class Metadata;
 class QTimer;
@@ -81,6 +82,7 @@ public:
     Metadata* metadata();
     const Metadata* metadata() const;
     Entry* resolveEntry(const Uuid& uuid);
+    Entry* resolveEntry(const QString& text, EntryReferenceType referenceType);
     Group* resolveGroup(const Uuid& uuid);
     QList<DeletedObject> deletedObjects();
     void addDeletedObject(const DeletedObject& delObj);
@@ -106,6 +108,7 @@ public:
      */
     bool setKey(const CompositeKey& key);
     bool hasKey() const;
+    bool transformKeyWithSeed(const QByteArray& transformSeed);
     bool verifyKey(const CompositeKey& key) const;
     void recycleEntry(Entry* entry);
     void recycleGroup(Group* group);
@@ -122,7 +125,7 @@ public:
 
     static Database* databaseByUuid(const Uuid& uuid);
     static Database* openDatabaseFile(QString fileName, CompositeKey key);
-    static Database* unlockFromStdin(QString databaseFilename);
+    static Database* unlockFromStdin(QString databaseFilename, QString keyFilename = QString(""));
 
 signals:
     void groupDataChanged(Group* group);
@@ -140,8 +143,9 @@ private slots:
     void startModifiedTimer();
 
 private:
-    Entry* recFindEntry(const Uuid& uuid, Group* group);
-    Group* recFindGroup(const Uuid& uuid, Group* group);
+    Entry* findEntryRecursive(const Uuid& uuid, Group* group);
+    Entry* findEntryRecursive(const QString& text, EntryReferenceType referenceType, Group* group);
+    Group* findGroupRecursive(const Uuid& uuid, Group* group);
 
     void createRecycleBin();
 

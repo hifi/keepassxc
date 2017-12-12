@@ -18,9 +18,10 @@
 
 #include "TestGroup.h"
 
-#include <QPointer>
-#include <QSignalSpy>
 #include <QDebug>
+#include <QPointer>
+#include <QScopedPointer>
+#include <QSignalSpy>
 #include <QTest>
 
 #include "core/Database.h"
@@ -76,6 +77,7 @@ void TestGroup::testParenting()
     QCOMPARE(g4->children().size(), 0);
 
     QVERIFY(rootGroup->children().at(0) == g1);
+    QVERIFY(rootGroup->children().at(0) == g1);
     QVERIFY(g1->children().at(0) == g2);
     QVERIFY(g1->children().at(1) == g3);
     QVERIFY(g3->children().contains(g4));
@@ -99,7 +101,6 @@ void TestGroup::testParenting()
     g3->setIcon(Uuid::random());
     g1->setIcon(2);
     QCOMPARE(spy.count(), 6);
-
     delete db;
 
     QVERIFY(rootGroup.isNull());
@@ -107,7 +108,6 @@ void TestGroup::testParenting()
     QVERIFY(g2.isNull());
     QVERIFY(g3.isNull());
     QVERIFY(g4.isNull());
-
     delete tmpRoot;
 }
 
@@ -117,18 +117,18 @@ void TestGroup::testSignals()
     Database* db2 = new Database();
     QPointer<Group> root = db->rootGroup();
 
-    QSignalSpy spyAboutToAdd(db, SIGNAL(groupAboutToAdd(Group*,int)));
+    QSignalSpy spyAboutToAdd(db, SIGNAL(groupAboutToAdd(Group*, int)));
     QSignalSpy spyAdded(db, SIGNAL(groupAdded()));
     QSignalSpy spyAboutToRemove(db, SIGNAL(groupAboutToRemove(Group*)));
     QSignalSpy spyRemoved(db, SIGNAL(groupRemoved()));
-    QSignalSpy spyAboutToMove(db, SIGNAL(groupAboutToMove(Group*,Group*,int)));
+    QSignalSpy spyAboutToMove(db, SIGNAL(groupAboutToMove(Group*, Group*, int)));
     QSignalSpy spyMoved(db, SIGNAL(groupMoved()));
 
-    QSignalSpy spyAboutToAdd2(db2, SIGNAL(groupAboutToAdd(Group*,int)));
+    QSignalSpy spyAboutToAdd2(db2, SIGNAL(groupAboutToAdd(Group*, int)));
     QSignalSpy spyAdded2(db2, SIGNAL(groupAdded()));
     QSignalSpy spyAboutToRemove2(db2, SIGNAL(groupAboutToRemove(Group*)));
     QSignalSpy spyRemoved2(db2, SIGNAL(groupRemoved()));
-    QSignalSpy spyAboutToMove2(db2, SIGNAL(groupAboutToMove(Group*,Group*,int)));
+    QSignalSpy spyAboutToMove2(db2, SIGNAL(groupAboutToMove(Group*, Group*, int)));
     QSignalSpy spyMoved2(db2, SIGNAL(groupMoved()));
 
     Group* g1 = new Group();
@@ -251,7 +251,7 @@ void TestGroup::testEntries()
 
 void TestGroup::testDeleteSignals()
 {
-    Database* db = new Database();
+    QScopedPointer<Database> db(new Database());
     Group* groupRoot = db->rootGroup();
     Group* groupChild = new Group();
     Group* groupChildChild = new Group();
@@ -260,15 +260,13 @@ void TestGroup::testDeleteSignals()
     groupChildChild->setObjectName("groupChildChild");
     groupChild->setParent(groupRoot);
     groupChildChild->setParent(groupChild);
-    QSignalSpy spyAboutToRemove(db, SIGNAL(groupAboutToRemove(Group*)));
-    QSignalSpy spyRemoved(db, SIGNAL(groupRemoved()));
+    QSignalSpy spyAboutToRemove(db.data(), SIGNAL(groupAboutToRemove(Group*)));
+    QSignalSpy spyRemoved(db.data(), SIGNAL(groupRemoved()));
 
     delete groupChild;
     QVERIFY(groupRoot->children().isEmpty());
     QCOMPARE(spyAboutToRemove.count(), 2);
     QCOMPARE(spyRemoved.count(), 2);
-    delete db;
-
 
     Group* group = new Group();
     Entry* entry = new Entry();
@@ -282,7 +280,7 @@ void TestGroup::testDeleteSignals()
     QCOMPARE(spyEntryRemoved.count(), 1);
     delete group;
 
-    Database* db2 = new Database();
+    QScopedPointer<Database> db2(new Database());
     Group* groupRoot2 = db2->rootGroup();
     Group* group2 = new Group();
     group2->setParent(groupRoot2);
@@ -294,12 +292,11 @@ void TestGroup::testDeleteSignals()
     delete group2;
     QCOMPARE(spyEntryAboutToRemove2.count(), 1);
     QCOMPARE(spyEntryRemoved2.count(), 1);
-    delete db2;
 }
 
 void TestGroup::testCopyCustomIcon()
 {
-    Database* dbSource = new Database();
+    QScopedPointer<Database> dbSource(new Database());
 
     Uuid groupIconUuid = Uuid::random();
     QImage groupIcon(16, 16, QImage::Format_RGB32);
@@ -321,7 +318,7 @@ void TestGroup::testCopyCustomIcon()
     entry->setIcon(entryIconUuid);
     QCOMPARE(entry->icon(), entryIcon);
 
-    Database* dbTarget = new Database();
+    QScopedPointer<Database> dbTarget(new Database());
 
     group->setParent(dbTarget->rootGroup());
     QVERIFY(dbTarget->metadata()->containsCustomIcon(groupIconUuid));
@@ -332,37 +329,34 @@ void TestGroup::testCopyCustomIcon()
     QVERIFY(dbTarget->metadata()->containsCustomIcon(entryIconUuid));
     QCOMPARE(dbTarget->metadata()->customIcon(entryIconUuid), entryIcon);
     QCOMPARE(entry->icon(), entryIcon);
-
-    delete dbSource;
-    delete dbTarget;
 }
 
 void TestGroup::testClone()
 {
-    Database* db = new Database();
+    QScopedPointer<Database> db(new Database());
 
-    Group* originalGroup = new Group();
+    QScopedPointer<Group> originalGroup(new Group());
     originalGroup->setParent(db->rootGroup());
     originalGroup->setName("Group");
     originalGroup->setIcon(42);
 
-    Entry* originalGroupEntry = new Entry();
-    originalGroupEntry->setGroup(originalGroup);
+    QScopedPointer<Entry> originalGroupEntry(new Entry());
+    originalGroupEntry->setGroup(originalGroup.data());
     originalGroupEntry->setTitle("GroupEntryOld");
     originalGroupEntry->setIcon(43);
     originalGroupEntry->beginUpdate();
     originalGroupEntry->setTitle("GroupEntry");
     originalGroupEntry->endUpdate();
 
-    Group* subGroup = new Group();
-    subGroup->setParent(originalGroup);
+    QScopedPointer<Group> subGroup(new Group());
+    subGroup->setParent(originalGroup.data());
     subGroup->setName("SubGroup");
 
-    Entry* subGroupEntry = new Entry();
-    subGroupEntry->setGroup(subGroup);
+    QScopedPointer<Entry> subGroupEntry(new Entry());
+    subGroupEntry->setGroup(subGroup.data());
     subGroupEntry->setTitle("SubGroupEntry");
 
-    Group* clonedGroup = originalGroup->clone();
+    QScopedPointer<Group> clonedGroup(originalGroup->clone());
     QVERIFY(!clonedGroup->parentGroup());
     QVERIFY(!clonedGroup->database());
     QVERIFY(clonedGroup->uuid() != originalGroup->uuid());
@@ -387,19 +381,31 @@ void TestGroup::testClone()
     QVERIFY(clonedSubGroupEntry->uuid() != subGroupEntry->uuid());
     QCOMPARE(clonedSubGroupEntry->title(), QString("SubGroupEntry"));
 
-    Group* clonedGroupKeepUuid = originalGroup->clone(Entry::CloneNoFlags);
+    QScopedPointer<Group> clonedGroupKeepUuid(originalGroup->clone(Entry::CloneNoFlags));
     QCOMPARE(clonedGroupKeepUuid->entries().at(0)->uuid(), originalGroupEntry->uuid());
     QCOMPARE(clonedGroupKeepUuid->children().at(0)->entries().at(0)->uuid(), subGroupEntry->uuid());
 
-    delete clonedGroup;
-    delete clonedGroupKeepUuid;
-    delete db;
+    Group* clonedGroupNoFlags = originalGroup->clone(Entry::CloneNoFlags, Group::CloneNoFlags);
+    QCOMPARE(clonedGroupNoFlags->entries().size(), 0);
+    QVERIFY(clonedGroupNoFlags->uuid() == originalGroup->uuid());
+
+    Group* clonedGroupNewUuid = originalGroup->clone(Entry::CloneNoFlags, Group::CloneNewUuid);
+    QCOMPARE(clonedGroupNewUuid->entries().size(), 0);
+    QVERIFY(clonedGroupNewUuid->uuid() != originalGroup->uuid());
+
+    // Making sure the new modification date is not the same.
+    QTest::qSleep(1);
+
+    Group* clonedGroupResetTimeInfo = originalGroup->clone(Entry::CloneNoFlags, Group::CloneNewUuid | Group::CloneResetTimeInfo);
+    QCOMPARE(clonedGroupResetTimeInfo->entries().size(), 0);
+    QVERIFY(clonedGroupResetTimeInfo->uuid() != originalGroup->uuid());
+    QVERIFY(clonedGroupResetTimeInfo->timeInfo().lastModificationTime() != originalGroup->timeInfo().lastModificationTime());
 }
 
 void TestGroup::testCopyCustomIcons()
 {
-    Database* dbSource = new Database();
-    Database* dbTarget = new Database();
+    QScopedPointer<Database> dbSource(new Database());
+    QScopedPointer<Database> dbTarget(new Database());
 
     QImage iconImage1(1, 1, QImage::Format_RGB32);
     iconImage1.setPixel(0, 0, qRgb(1, 2, 3));
@@ -407,20 +413,20 @@ void TestGroup::testCopyCustomIcons()
     QImage iconImage2(1, 1, QImage::Format_RGB32);
     iconImage2.setPixel(0, 0, qRgb(4, 5, 6));
 
-    Group* group1 = new Group();
+    QScopedPointer<Group> group1(new Group());
     group1->setParent(dbSource->rootGroup());
     Uuid group1Icon = Uuid::random();
     dbSource->metadata()->addCustomIcon(group1Icon, iconImage1);
     group1->setIcon(group1Icon);
 
-    Group* group2 = new Group();
-    group2->setParent(group1);
+    QScopedPointer<Group> group2(new Group());
+    group2->setParent(group1.data());
     Uuid group2Icon = Uuid::random();
     dbSource->metadata()->addCustomIcon(group2Icon, iconImage1);
     group2->setIcon(group2Icon);
 
-    Entry* entry1 = new Entry();
-    entry1->setGroup(group2);
+    QScopedPointer<Entry> entry1(new Entry());
+    entry1->setGroup(group2.data());
     Uuid entry1IconOld = Uuid::random();
     dbSource->metadata()->addCustomIcon(entry1IconOld, iconImage1);
     entry1->setIcon(entry1IconOld);
@@ -447,131 +453,11 @@ void TestGroup::testCopyCustomIcons()
 
     QCOMPARE(metaTarget->customIcon(group1Icon).pixel(0, 0), qRgb(1, 2, 3));
     QCOMPARE(metaTarget->customIcon(group2Icon).pixel(0, 0), qRgb(4, 5, 6));
-
-    delete dbTarget;
-    delete dbSource;
-}
-
-void TestGroup::testMerge()
-{
-    Group* group1 = new Group();
-    group1->setName("group 1");
-    Group* group2 = new Group();
-    group2->setName("group 2");
-
-    Entry* entry1 = new Entry();
-    Entry* entry2 = new Entry();
-
-    entry1->setGroup(group1);
-    entry1->setUuid(Uuid::random());
-    entry2->setGroup(group1);
-    entry2->setUuid(Uuid::random());
-
-    group2->merge(group1);
-
-    QCOMPARE(group1->entries().size(), 2);
-    QCOMPARE(group2->entries().size(), 2);
-}
-
-void TestGroup::testMergeDatabase()
-{
-    Database* dbSource = createMergeTestDatabase();
-    Database* dbDest = new Database();
-
-    dbDest->merge(dbSource);
-
-    QCOMPARE(dbDest->rootGroup()->children().size(), 2);
-    QCOMPARE(dbDest->rootGroup()->children().at(0)->entries().size(), 2);
-
-    delete dbDest;
-    delete dbSource;
-}
-
-void TestGroup::testMergeConflict()
-{
-    Database* dbSource = createMergeTestDatabase();
-
-    // test merging updated entries
-    // falls back to KeepBoth mode
-    Database* dbCopy = new Database();
-    dbCopy->setRootGroup(dbSource->rootGroup()->clone(Entry::CloneNoFlags));
-
-    // sanity check
-    QCOMPARE(dbCopy->rootGroup()->children().at(0)->entries().size(), 2);
-
-    // make this entry newer than in original db
-    Entry* updatedEntry = dbCopy->rootGroup()->children().at(0)->entries().at(0);
-    TimeInfo updatedTimeInfo = updatedEntry->timeInfo();
-    updatedTimeInfo.setLastModificationTime(updatedTimeInfo.lastModificationTime().addYears(1));
-    updatedEntry->setTimeInfo(updatedTimeInfo);
-
-    dbCopy->merge(dbSource);
-
-    // one entry is duplicated because of mode
-    QCOMPARE(dbCopy->rootGroup()->children().at(0)->entries().size(), 2);
-
-    delete dbSource;
-    delete dbCopy;
-}
-
-void TestGroup::testMergeConflictKeepBoth()
-{
-    Database* dbSource = createMergeTestDatabase();
-
-    // test merging updated entries
-    // falls back to KeepBoth mode
-    Database* dbCopy = new Database();
-    dbCopy->setRootGroup(dbSource->rootGroup()->clone(Entry::CloneNoFlags));
-
-    // sanity check
-    QCOMPARE(dbCopy->rootGroup()->children().at(0)->entries().size(), 2);
-
-    // make this entry newer than in original db
-    Entry* updatedEntry = dbCopy->rootGroup()->children().at(0)->entries().at(0);
-    TimeInfo updatedTimeInfo = updatedEntry->timeInfo();
-    updatedTimeInfo.setLastModificationTime(updatedTimeInfo.lastModificationTime().addYears(1));
-    updatedEntry->setTimeInfo(updatedTimeInfo);
-
-    dbCopy->rootGroup()->setMergeMode(Group::MergeMode::KeepBoth);
-
-    dbCopy->merge(dbSource);
-
-    // one entry is duplicated because of mode
-    QCOMPARE(dbCopy->rootGroup()->children().at(0)->entries().size(), 3);
-    // the older entry was merged from the other db as last in the group
-    Entry* olderEntry = dbCopy->rootGroup()->children().at(0)->entries().at(2);
-    QVERIFY2(olderEntry->attributes()->hasKey("merged"), "older entry is marked with an attribute \"merged\"");
-
-    delete dbSource;
-    delete dbCopy;
-}
-
-Database* TestGroup::createMergeTestDatabase()
-{
-    Database* db = new Database();
-
-    Group* group1 = new Group();
-    group1->setName("group 1");
-    Group* group2 = new Group();
-    group2->setName("group 2");
-
-    Entry* entry1 = new Entry();
-    Entry* entry2 = new Entry();
-
-    entry1->setGroup(group1);
-    entry1->setUuid(Uuid::random());
-    entry2->setGroup(group1);
-    entry2->setUuid(Uuid::random());
-
-    group1->setParent(db->rootGroup());
-    group2->setParent(db->rootGroup());
-
-    return db;
 }
 
 void TestGroup::testFindEntry()
 {
-    Database* db = new Database();
+    QScopedPointer<Database> db(new Database());
 
     Entry* entry1 = new Entry();
     entry1->setTitle(QString("entry1"));
@@ -642,13 +528,11 @@ void TestGroup::testFindEntry()
     // An invalid UUID.
     entry = db->rootGroup()->findEntry(QString("febfb01ebcdf9dbd90a3f1579dc"));
     QVERIFY(entry == nullptr);
-
-    delete db;
 }
 
 void TestGroup::testFindGroupByPath()
 {
-    Database* db = new Database();
+    QScopedPointer<Database> db(new Database());
 
     Group* group1 = new Group();
     group1->setName("group1");
@@ -706,13 +590,11 @@ void TestGroup::testFindGroupByPath()
 
     group = db->rootGroup()->findGroupByPath("invalid");
     QVERIFY(group == nullptr);
-
-    delete db;
 }
 
 void TestGroup::testPrint()
 {
-    Database* db = new Database();
+    QScopedPointer<Database> db(new Database());
 
     QString output = db->rootGroup()->print();
     QCOMPARE(output, QString("[empty]\n"));
@@ -752,6 +634,112 @@ void TestGroup::testPrint()
     output = group1->print();
     QVERIFY(!output.contains(QString("group1/\n")));
     QVERIFY(output.contains(QString("entry2\n")));
+}
+
+void TestGroup::testLocate()
+{
+    Database* db = new Database();
+
+    Entry* entry1 = new Entry();
+    entry1->setTitle("entry1");
+    entry1->setGroup(db->rootGroup());
+
+    Entry* entry2 = new Entry();
+    entry2->setTitle("entry2");
+    entry2->setGroup(db->rootGroup());
+
+    Group* group1 = new Group();
+    group1->setName("group1");
+    group1->setParent(db->rootGroup());
+
+    Group* group2 = new Group();
+    group2->setName("group2");
+    group2->setParent(group1);
+
+    Entry* entry3 = new Entry();
+    entry3->setTitle("entry3");
+    entry3->setGroup(group1);
+
+    Entry* entry43 = new Entry();
+    entry43->setTitle("entry43");
+    entry43->setGroup(group1);
+
+    Entry* google = new Entry();
+    google->setTitle("Google");
+    google->setGroup(group2);
+
+    QStringList results = db->rootGroup()->locate("entry");
+    QVERIFY(results.size() == 4);
+    QVERIFY(results.contains("/group1/entry43"));
+
+    results = db->rootGroup()->locate("entry1");
+    QVERIFY(results.size() == 1);
+    QVERIFY(results.contains("/entry1"));
+
+    results = db->rootGroup()->locate("Entry1");
+    QVERIFY(results.size() == 1);
+    QVERIFY(results.contains("/entry1"));
+
+    results = db->rootGroup()->locate("invalid");
+    QVERIFY(results.size() == 0);
+
+    results = db->rootGroup()->locate("google");
+    QVERIFY(results.size() == 1);
+    QVERIFY(results.contains("/group1/group2/Google"));
+
+    results = db->rootGroup()->locate("group1");
+    QVERIFY(results.size() == 3);
+    QVERIFY(results.contains("/group1/entry3"));
+    QVERIFY(results.contains("/group1/entry43"));
+    QVERIFY(results.contains("/group1/group2/Google"));
+
+    delete db;
+}
+
+void TestGroup::testAddEntryWithPath()
+{
+    Database* db = new Database();
+
+    Group* group1 = new Group();
+    group1->setName("group1");
+    group1->setParent(db->rootGroup());
+
+    Group* group2 = new Group();
+    group2->setName("group2");
+    group2->setParent(group1);
+
+    Entry* entry = db->rootGroup()->addEntryWithPath("entry1");
+    QVERIFY(entry != nullptr);
+    QVERIFY(!entry->uuid().isNull());
+
+    entry = db->rootGroup()->addEntryWithPath("entry1");
+    QVERIFY(entry == nullptr);
+
+    entry = db->rootGroup()->addEntryWithPath("/entry1");
+    QVERIFY(entry == nullptr);
+
+    entry = db->rootGroup()->addEntryWithPath("entry2");
+    QVERIFY(entry != nullptr);
+    QVERIFY(entry->title() == "entry2");
+    QVERIFY(!entry->uuid().isNull());
+
+    entry = db->rootGroup()->addEntryWithPath("/entry3");
+    QVERIFY(entry != nullptr);
+    QVERIFY(entry->title() == "entry3");
+    QVERIFY(!entry->uuid().isNull());
+
+    entry = db->rootGroup()->addEntryWithPath("/group1/entry4");
+    QVERIFY(entry != nullptr);
+    QVERIFY(entry->title() == "entry4");
+    QVERIFY(!entry->uuid().isNull());
+
+    entry = db->rootGroup()->addEntryWithPath("/group1/group2/entry5");
+    QVERIFY(entry != nullptr);
+    QVERIFY(entry->title() == "entry5");
+    QVERIFY(!entry->uuid().isNull());
+
+    entry = db->rootGroup()->addEntryWithPath("/group1/invalid_group/entry6");
+    QVERIFY(entry == nullptr);
 
     delete db;
 }

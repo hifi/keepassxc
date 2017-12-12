@@ -14,18 +14,26 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 set(cli_SOURCES
+    Add.cpp
+    Add.h
     Clip.cpp
     Clip.h
     Command.cpp
     Command.h
-    EntropyMeter.cpp
-    EntropyMeter.h
+    Edit.cpp
+    Edit.h
+    Estimate.cpp
+    Estimate.h
     Extract.cpp
     Extract.h
     List.cpp
     List.h
+    Locate.cpp
+    Locate.h
     Merge.cpp
     Merge.h
+    Remove.cpp
+    Remove.h
     Show.cpp
     Show.h)
 
@@ -45,3 +53,8 @@ target_link_libraries(keepassxc-cli
 install(TARGETS keepassxc-cli
         BUNDLE DESTINATION . COMPONENT Runtime
         RUNTIME DESTINATION ${CLI_INSTALL_DIR} COMPONENT Runtime)
+
+if(APPLE OR UNIX)
+    install(FILES keepassxc-cli.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1/)
+    execute_process(COMMAND mandb -q)
+endif()

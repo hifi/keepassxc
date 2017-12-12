@@ -30,8 +30,9 @@ class TestTotp : public QObject
 private slots:
     void initTestCase();
     void testParseSecret();
-    void testBase32();
     void testTotpCode();
+    void testEncoderData();
+    void testSteamTotp();
 };
 
 #endif // KEEPASSX_TESTTOTP_H

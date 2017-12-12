@@ -22,11 +22,15 @@
 
 #include "Command.h"
 
+#include "Add.h"
 #include "Clip.h"
-#include "EntropyMeter.h"
+#include "Edit.h"
+#include "Estimate.h"
 #include "Extract.h"
 #include "List.h"
+#include "Locate.h"
 #include "Merge.h"
+#include "Remove.h"
 #include "Show.h"
 
 QMap<QString, Command*> commands;
@@ -35,7 +39,7 @@ Command::~Command()
 {
 }
 
-int Command::execute(int, char**)
+int Command::execute(QStringList)
 {
     return EXIT_FAILURE;
 }
@@ -55,11 +59,15 @@ QString Command::getDescriptionLine()
 void populateCommands()
 {
     if (commands.isEmpty()) {
+        commands.insert(QString("add"), new Add());
         commands.insert(QString("clip"), new Clip());
-        commands.insert(QString("entropy-meter"), new EntropyMeter());
+        commands.insert(QString("edit"), new Edit());
+        commands.insert(QString("estimate"), new Estimate());
         commands.insert(QString("extract"), new Extract());
+        commands.insert(QString("locate"), new Locate());
         commands.insert(QString("ls"), new List());
         commands.insert(QString("merge"), new Merge());
+        commands.insert(QString("rm"), new Remove());
         commands.insert(QString("show"), new Show());
     }
 }

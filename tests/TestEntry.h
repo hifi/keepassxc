@@ -31,6 +31,11 @@ private slots:
     void testHistoryItemDeletion();
     void testCopyDataFrom();
     void testClone();
+    void testResolveUrl();
+    void testResolveUrlPlaceholders();
+    void testResolveRecursivePlaceholders();
+    void testResolveReferencePlaceholders();
+    void testResolveNonIdPlaceholdersToUuid();
 };
 
 #endif // KEEPASSX_TESTENTRY_H

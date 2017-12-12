@@ -21,6 +21,7 @@
 
 #include <QLineEdit>
 #include <QDir>
+#include <QKeyEvent>
 
 #include "core/Config.h"
 #include "core/PasswordGenerator.h"
@@ -98,7 +99,7 @@ void PasswordGeneratorWidget::loadSettings()
     m_ui->checkBoxExtASCII->setChecked(config()->get("generator/EASCII", false).toBool());
     m_ui->checkBoxExcludeAlike->setChecked(config()->get("generator/ExcludeAlike", true).toBool());
     m_ui->checkBoxEnsureEvery->setChecked(config()->get("generator/EnsureEvery", true).toBool());
-    m_ui->spinBoxLength->setValue(config()->get("generator/Length", 16).toInt());
+    m_ui->spinBoxLength->setValue(config()->get("generator/Length", PasswordGenerator::DefaultLength).toInt());
 
     // Diceware config
     m_ui->spinBoxWordCount->setValue(config()->get("generator/WordCount", 6).toInt());
@@ -146,6 +147,19 @@ void PasswordGeneratorWidget::setStandaloneMode(bool standalone)
         togglePasswordShown(true);
     } else {
         m_ui->buttonApply->setText(tr("Apply"));
+    }
+}
+
+void PasswordGeneratorWidget::keyPressEvent(QKeyEvent* e)
+{
+    if (!e->modifiers() || (e->modifiers() & Qt::KeypadModifier && e->key() == Qt::Key_Enter)) {
+        if (e->key() == Qt::Key_Escape && m_standalone == true) {
+            emit dialogTerminated();
+        } else {
+            e->ignore();
+        }
+    } else {
+        e->ignore();
     }
 }
 

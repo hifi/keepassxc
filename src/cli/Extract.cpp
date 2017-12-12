@@ -21,15 +21,15 @@
 #include "Extract.h"
 
 #include <QCommandLineParser>
-#include <QCoreApplication>
 #include <QFile>
-#include <QStringList>
 #include <QTextStream>
 
 #include "cli/Utils.h"
 #include "core/Database.h"
 #include "format/KeePass2Reader.h"
 #include "keys/CompositeKey.h"
+#include "keys/FileKey.h"
+#include "keys/PasswordKey.h"
 
 Extract::Extract()
 {
@@ -41,20 +41,19 @@ Extract::~Extract()
 {
 }
 
-int Extract::execute(int argc, char** argv)
+int Extract::execute(QStringList arguments)
 {
-    QStringList arguments;
-    // Skipping the first argument (keepassxc).
-    for (int i = 1; i < argc; ++i) {
-        arguments << QString(argv[i]);
-    }
-
-    QCoreApplication app(argc, argv);
     QTextStream out(stdout);
+    QTextStream errorTextStream(stderr);
 
     QCommandLineParser parser;
     parser.setApplicationDescription(this->description);
     parser.addPositionalArgument("database", QObject::tr("Path of the database to extract."));
+    QCommandLineOption keyFile(QStringList() << "k"
+                                             << "key-file",
+                               QObject::tr("Key file of the database."),
+                               QObject::tr("path"));
+    parser.addOption(keyFile);
     parser.process(arguments);
 
     const QStringList args = parser.positionalArguments();
@@ -63,11 +62,28 @@ int Extract::execute(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    out << "Insert the database password\n> ";
+    out << QObject::tr("Insert password to unlock %1: ").arg(args.at(0));
     out.flush();
 
+    CompositeKey compositeKey;
+
     QString line = Utils::getPassword();
-    CompositeKey key = CompositeKey::readFromLine(line);
+    PasswordKey passwordKey;
+    passwordKey.setPassword(line);
+    compositeKey.addKey(passwordKey);
+
+    QString keyFilePath = parser.value(keyFile);
+    if (!keyFilePath.isEmpty()) {
+        FileKey fileKey;
+        QString errorMsg;
+        if (!fileKey.load(keyFilePath, &errorMsg)) {
+            errorTextStream << QObject::tr("Failed to load key file %1 : %2").arg(keyFilePath).arg(errorMsg);
+            errorTextStream << endl;
+            return EXIT_FAILURE;
+        }
+
+        compositeKey.addKey(fileKey);
+    }
 
     QString databaseFilename = args.at(0);
     QFile dbFile(databaseFilename);
@@ -82,7 +98,7 @@ int Extract::execute(int argc, char** argv)
 
     KeePass2Reader reader;
     reader.setSaveXml(true);
-    Database* db = reader.readDatabase(&dbFile, key);
+    Database* db = reader.readDatabase(&dbFile, compositeKey);
     delete db;
 
     QByteArray xmlData = reader.xmlData();

@@ -31,6 +31,9 @@
 #include "format/KeePass2.h"
 #include "format/KeePass2Reader.h"
 #include "format/KeePass2Writer.h"
+#include "keys/PasswordKey.h"
+#include "keys/FileKey.h"
+#include "keys/CompositeKey.h"
 
 QHash<Uuid, Database*> Database::m_uuidMap;
 
@@ -92,10 +95,15 @@ const Metadata* Database::metadata() const
 
 Entry* Database::resolveEntry(const Uuid& uuid)
 {
-    return recFindEntry(uuid, m_rootGroup);
+    return findEntryRecursive(uuid, m_rootGroup);
 }
 
-Entry* Database::recFindEntry(const Uuid& uuid, Group* group)
+Entry* Database::resolveEntry(const QString& text, EntryReferenceType referenceType)
+{
+    return findEntryRecursive(text, referenceType, m_rootGroup);
+}
+
+Entry* Database::findEntryRecursive(const Uuid& uuid, Group* group)
 {
     const QList<Entry*> entryList = group->entries();
     for (Entry* entry : entryList) {
@@ -106,7 +114,57 @@ Entry* Database::recFindEntry(const Uuid& uuid, Group* group)
 
     const QList<Group*> children = group->children();
     for (Group* child : children) {
-        Entry* result = recFindEntry(uuid, child);
+        Entry* result = findEntryRecursive(uuid, child);
+        if (result) {
+            return result;
+        }
+    }
+
+    return nullptr;
+}
+
+Entry* Database::findEntryRecursive(const QString& text, EntryReferenceType referenceType, Group* group)
+{
+    Q_ASSERT_X(referenceType != EntryReferenceType::Unknown, "Database::findEntryRecursive",
+               "Can't search entry with \"referenceType\" parameter equal to \"Unknown\"");
+
+    bool found = false;
+    const QList<Entry*> entryList = group->entries();
+    for (Entry* entry : entryList) {
+        switch (referenceType) {
+        case EntryReferenceType::Unknown:
+            return nullptr;
+        case EntryReferenceType::Title:
+            found = entry->title() == text;
+            break;
+        case EntryReferenceType::UserName:
+            found = entry->username() == text;
+            break;
+        case EntryReferenceType::Password:
+            found = entry->password() == text;
+            break;
+        case EntryReferenceType::Url:
+            found = entry->url() == text;
+            break;
+        case EntryReferenceType::Notes:
+            found = entry->notes() == text;
+            break;
+        case EntryReferenceType::Uuid:
+            found = entry->uuid().toHex() == text;
+            break;
+        case EntryReferenceType::CustomAttributes:
+            found = entry->attributes()->containsValue(text);
+            break;
+        }
+
+        if (found) {
+            return entry;
+        }
+    }
+
+    const QList<Group*> children = group->children();
+    for (Group* child : children) {
+        Entry* result = findEntryRecursive(text, referenceType, child);
         if (result) {
             return result;
         }
@@ -117,10 +175,10 @@ Entry* Database::recFindEntry(const Uuid& uuid, Group* group)
 
 Group* Database::resolveGroup(const Uuid& uuid)
 {
-    return recFindGroup(uuid, m_rootGroup);
+    return findGroupRecursive(uuid, m_rootGroup);
 }
 
-Group* Database::recFindGroup(const Uuid& uuid, Group* group)
+Group* Database::findGroupRecursive(const Uuid& uuid, Group* group)
 {
     if (group->uuid() == uuid) {
         return group;
@@ -128,7 +186,7 @@ Group* Database::recFindGroup(const Uuid& uuid, Group* group)
 
     const QList<Group*> children = group->children();
     for (Group* child : children) {
-        Group* result = recFindGroup(uuid, child);
+        Group* result = findGroupRecursive(uuid, child);
         if (result) {
             return result;
         }
@@ -257,6 +315,25 @@ bool Database::hasKey() const
     return m_data.hasKey;
 }
 
+bool Database::transformKeyWithSeed(const QByteArray& transformSeed)
+{
+    Q_ASSERT(hasKey());
+
+    bool ok;
+    QString errorString;
+
+    QByteArray transformedMasterKey =
+            m_data.key.transform(transformSeed, transformRounds(), &ok, &errorString);
+    if (!ok) {
+        return false;
+    }
+
+    m_data.transformSeed = transformSeed;
+    m_data.transformedMasterKey = transformedMasterKey;
+
+    return true;
+}
+
 bool Database::verifyKey(const CompositeKey& key) const
 {
     Q_ASSERT(hasKey());
@@ -328,6 +405,15 @@ void Database::emptyRecycleBin()
 void Database::merge(const Database* other)
 {
     m_rootGroup->merge(other->rootGroup());
+
+    for (Uuid customIconId : other->metadata()->customIcons().keys()) {
+        QImage customIcon = other->metadata()->customIcon(customIconId);
+        if (!this->metadata()->containsCustomIcon(customIconId)) {
+            qDebug("Adding custom icon %s to database.", qPrintable(customIconId.toHex()));
+            this->metadata()->addCustomIcon(customIconId, customIcon);
+        }
+    }
+
     emit modified();
 }
 
@@ -397,16 +483,32 @@ Database* Database::openDatabaseFile(QString fileName, CompositeKey key)
     return db;
 }
 
-Database* Database::unlockFromStdin(QString databaseFilename)
+Database* Database::unlockFromStdin(QString databaseFilename, QString keyFilename)
 {
+    CompositeKey compositeKey;
     QTextStream outputTextStream(stdout);
+    QTextStream errorTextStream(stderr);
 
-    outputTextStream << QString("Insert password to unlock " + databaseFilename + "\n> ");
+    outputTextStream << QObject::tr("Insert password to unlock %1: ").arg(databaseFilename);
     outputTextStream.flush();
 
     QString line = Utils::getPassword();
-    CompositeKey key = CompositeKey::readFromLine(line);
-    return Database::openDatabaseFile(databaseFilename, key);
+    PasswordKey passwordKey;
+    passwordKey.setPassword(line);
+    compositeKey.addKey(passwordKey);
+
+    if (!keyFilename.isEmpty()) {
+        FileKey fileKey;
+        QString errorMessage;
+        if (!fileKey.load(keyFilename, &errorMessage)) {
+            errorTextStream << QObject::tr("Failed to load key file %1 : %2").arg(keyFilename, errorMessage);
+            errorTextStream << endl;
+            return nullptr;
+        }
+        compositeKey.addKey(fileKey);
+    }
+
+    return Database::openDatabaseFile(databaseFilename, compositeKey);
 }
 
 QString Database::saveToFile(QString filePath)

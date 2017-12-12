@@ -260,15 +260,9 @@
     <addaction name="actionPasswordGenerator"/>
     <addaction name="actionSettings"/>
    </widget>
-   <widget class="QMenu" name="menuView">
-    <property name="title">
-     <string>&amp;View</string>
-    </property>
-   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEntries"/>
    <addaction name="menuGroups"/>
-   <addaction name="menuView"/>
    <addaction name="menuTools"/>
    <addaction name="menuHelp"/>
   </widget>
@@ -292,6 +286,8 @@
    <addaction name="separator"/>
    <addaction name="actionEntryCopyUsername"/>
    <addaction name="actionEntryCopyPassword"/>
+   <addaction name="actionEntryCopyURL"/>
+   <addaction name="actionEntryAutoType"/>
    <addaction name="separator"/>
    <addaction name="actionPasswordGenerator"/>
    <addaction name="actionLockDatabases"/>
@@ -495,6 +491,9 @@
    <property name="text">
     <string>&amp;Title</string>
    </property>
+   <property name="toolTip">
+    <string>Copy title to clipboard</string>
+   </property>
   </action>
   <action name="actionEntryCopyURL">
    <property name="enabled">
@@ -503,6 +502,9 @@
    <property name="text">
     <string>&amp;URL</string>
    </property>
+   <property name="toolTip">
+    <string>Copy URL to clipboard</string>
+   </property>
   </action>
   <action name="actionEntryCopyNotes">
    <property name="enabled">
@@ -510,6 +512,9 @@
    </property>
    <property name="text">
     <string>&amp;Notes</string>
+   </property>
+   <property name="toolTip">
+    <string>Copy notes to clipboard</string>
    </property>
   </action>
   <action name="actionExportCsv">
@@ -552,7 +557,7 @@
   </action>
   <action name="actionGroupEmptyRecycleBin">
    <property name="text">
-    <string>Empty recycle bin</string>
+    <string>E&amp;mpty recycle bin</string>
    </property>
    <property name="visible">
     <bool>false</bool>
