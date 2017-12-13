@@ -563,10 +563,10 @@ bool BrowserService::confirmEntries(QList<Entry*>& pwEntriesToConfirm, const QSt
 QJsonObject BrowserService::prepareEntry(const Entry* entry)
 {
     QJsonObject res;
-    res["login"] = entry->resolvePlaceholder(entry->username());
-    res["password"] = entry->resolvePlaceholder(entry->password());
-    res["name"] = entry->resolvePlaceholder(entry->title());
-    res["uuid"] = entry->resolvePlaceholder(entry->uuid().toHex());
+    res["login"] = entry->resolveMultiplePlaceholders(entry->username());
+    res["password"] = entry->resolveMultiplePlaceholders(entry->password());
+    res["name"] = entry->resolveMultiplePlaceholders(entry->title());
+    res["uuid"] = entry->resolveMultiplePlaceholders(entry->uuid().toHex());
 
     if (BrowserSettings::supportKphFields()) {
         const EntryAttributes* attr = entry->attributes();
@@ -574,7 +574,7 @@ QJsonObject BrowserService::prepareEntry(const Entry* entry)
         for (const QString& key : attr->keys()) {
             if (key.startsWith(QLatin1String("KPH: "))) {
                 QJsonObject sField;
-                sField[key] = attr->value(key);
+                sField[key] = entry->resolveMultiplePlaceholders(attr->value(key));
                 stringFields << sField;
             }
         }
