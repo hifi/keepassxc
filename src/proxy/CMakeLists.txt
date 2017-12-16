@@ -16,12 +16,10 @@
 
 if(WITH_XC_BROWSER)
     include_directories(${BROWSER_SOURCE_DIR})
-    message(STATUS "Browser dir: ${BROWSER_SOURCE_DIR}")
 
     set(proxy_SOURCES
         keepassxc-proxy.cpp
         ${BROWSER_SOURCE_DIR}/NativeMessagingBase.cpp
-        #${BROWSER_SOURCE_DIR}/NativeMessagingBase.h
         NativeMessagingHost.cpp)
 
     add_library(proxy STATIC ${proxy_SOURCES})
