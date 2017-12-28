@@ -195,7 +195,7 @@ QString BrowserService::storeKey(const QString& key)
 
         contains = config->attributes()->contains(QLatin1String(ASSOCIATE_KEY_PREFIX) + id);
         dialogResult = QMessageBox::warning(0, tr("KeePassXC: Overwrite existing key?"),
-                                                 tr("A shared encryption-key with the name \"%1\" already exists.\nDo you want to overwrite it?").arg(id),
+                                                 tr("A shared encryption key with the name \"%1\" already exists.\nDo you want to overwrite it?").arg(id),
                                                  QMessageBox::Yes | QMessageBox::No);
     } while (contains && dialogResult == QMessageBox::No);
 
