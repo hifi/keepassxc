@@ -151,10 +151,10 @@ QString HostInstaller::getPath(SupportedBrowsers browser) const
 
 QString HostInstaller::getInstallDir(SupportedBrowsers browser) const
 {
+    QString path = getTargetPath(browser);
 #ifdef Q_OS_WIN
     return QCoreApplication::applicationDirPath();
 #else
-    QString path = getTargetPath(browser);
     return QString("%1%2").arg(QDir::homePath(), path);
 #endif
 }
