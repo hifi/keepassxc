@@ -25,12 +25,6 @@
 #include "core/Metadata.h"
 #include "totp/totp.h"
 
-#ifdef WITH_XC_SSHAGENT
-#include "sshagent/KeeAgentSettings.h"
-#include "sshagent/OpenSSHKey.h"
-#include "sshagent/SSHAgent.h"
-#endif
-
 #include <QRegularExpression>
 
 const int Entry::DefaultIconNumber = 0;
@@ -426,70 +420,6 @@ quint8 Entry::totpDigits() const
 bool Entry::hasSSHKey() const
 {
     return attachments()->hasKey("KeeAgent.settings");
-}
-
-bool Entry::getSSHKey(OpenSSHKey& key, bool decrypt) const
-{
-    if (!attachments()->hasKey("KeeAgent.settings")) {
-        return false;
-    }
-
-    KeeAgentSettings settings;
-    settings.fromXml(attachments()->value("KeeAgent.settings"));
-
-    QString fileName;
-    QByteArray privateKeyData;
-
-    if (settings.selectedType() == "attachment") {
-        fileName = settings.attachmentName();
-        privateKeyData = attachments()->value(fileName);
-    } else {
-        QFile localFile(settings.fileName());
-        QFileInfo localFileInfo(localFile);
-        fileName = localFileInfo.fileName();
-
-        if (localFile.fileName().isEmpty()) {
-            return false;
-        }
-
-        if (localFile.size() > 1024 * 1024) {
-            //showMessage(tr("File too large to be a private key"), MessageWidget::Error);
-            return false;
-        }
-
-        if (!localFile.open(QIODevice::ReadOnly)) {
-            //showMessage(tr("Failed to open private key"), MessageWidget::Error);
-            return false;
-        }
-
-        privateKeyData = localFile.readAll();
-    }
-
-    if (privateKeyData.isEmpty()) {
-        return false;
-    }
-
-    if (!key.parse(privateKeyData)) {
-        //showMessage(key.errorString(), MessageWidget::Error);
-        return false;
-    }
-
-    if (key.encrypted() && (decrypt || key.publicKey().isEmpty())) {
-        if (!key.openPrivateKey(password())) {
-            //showMessage(key.errorString(), MessageWidget::Error);
-            return false;
-        }
-    }
-
-    if (key.comment().isEmpty()) {
-        key.setComment(username());
-    }
-
-    if (key.comment().isEmpty()) {
-        key.setComment(fileName);
-    }
-
-    return true;
 }
 
 void Entry::setUuid(const Uuid& uuid)

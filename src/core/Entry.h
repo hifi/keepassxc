@@ -36,7 +36,6 @@
 
 class Database;
 class Group;
-class OpenSSHKey;
 
 enum class EntryReferenceType
 {
@@ -114,7 +113,6 @@ public:
     const CustomData* customData() const;
 
     bool hasSSHKey() const;
-    bool getSSHKey(OpenSSHKey &key, bool decrypt = false) const;
 
     static const int DefaultIconNumber;
     static const int ResolveMaximumDepth;

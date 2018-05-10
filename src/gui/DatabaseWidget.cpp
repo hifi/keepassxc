@@ -603,8 +603,10 @@ void DatabaseWidget::addSSHKeyToAgent()
 
 #ifdef WITH_XC_SSHAGENT
     OpenSSHKey key;
-    if (currentEntry->getSSHKey(key, true)) {
+    if (key.fromEntry(*currentEntry, true)) {
         SSHAgent::instance()->addIdentity(key);
+    } else {
+        m_messageWidget->showMessage(key.errorString(), MessageWidget::Error);
     }
 #endif
 }

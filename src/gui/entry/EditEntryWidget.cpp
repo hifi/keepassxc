@@ -407,7 +407,8 @@ void EditEntryWidget::updateSSHAgentKeyInfo()
 
     OpenSSHKey key;
 
-    if (!getOpenSSHKey(key)) {
+    if (!key.fromEntry(*m_entry)) {
+        showMessage(key.errorString(), MessageWidget::Error);
         return;
     }
 
@@ -483,68 +484,12 @@ void EditEntryWidget::browsePrivateKey()
     }
 }
 
-bool EditEntryWidget::getOpenSSHKey(OpenSSHKey& key, bool decrypt)
-{
-    QString fileName;
-    QByteArray privateKeyData;
-
-    if (m_sshAgentUi->attachmentRadioButton->isChecked()) {
-        fileName = m_sshAgentUi->attachmentComboBox->currentText();
-        privateKeyData = m_advancedUi->attachmentsWidget->getAttachment(fileName);
-    } else {
-        QFile localFile(m_sshAgentUi->externalFileEdit->text());
-        QFileInfo localFileInfo(localFile);
-        fileName = localFileInfo.fileName();
-
-        if (localFile.fileName().isEmpty()) {
-            return false;
-        }
-
-        if (localFile.size() > 1024 * 1024) {
-            showMessage(tr("File too large to be a private key"), MessageWidget::Error);
-            return false;
-        }
-
-        if (!localFile.open(QIODevice::ReadOnly)) {
-            showMessage(tr("Failed to open private key"), MessageWidget::Error);
-            return false;
-        }
-
-        privateKeyData = localFile.readAll();
-    }
-
-    if (privateKeyData.isEmpty()) {
-        return false;
-    }
-
-    if (!key.parse(privateKeyData)) {
-        showMessage(key.errorString(), MessageWidget::Error);
-        return false;
-    }
-
-    if (key.encrypted() && (decrypt || key.publicKey().isEmpty())) {
-        if (!key.openPrivateKey(m_entry->password())) {
-            showMessage(key.errorString(), MessageWidget::Error);
-            return false;
-        }
-    }
-
-    if (key.comment().isEmpty()) {
-        key.setComment(m_entry->username());
-    }
-
-    if (key.comment().isEmpty()) {
-        key.setComment(fileName);
-    }
-
-    return true;
-}
-
 void EditEntryWidget::addKeyToAgent()
 {
     OpenSSHKey key;
 
-    if (!getOpenSSHKey(key, true)) {
+    if (!key.fromEntry(*m_entry, true)) {
+        showMessage(key.errorString(), MessageWidget::Error);
         return;
     }
 
@@ -572,7 +517,8 @@ void EditEntryWidget::removeKeyFromAgent()
 {
     OpenSSHKey key;
 
-    if (!getOpenSSHKey(key)) {
+    if (!key.fromEntry(*m_entry)) {
+        showMessage(key.errorString(), MessageWidget::Error);
         return;
     }
 
@@ -586,7 +532,8 @@ void EditEntryWidget::decryptPrivateKey()
 {
     OpenSSHKey key;
 
-    if (!getOpenSSHKey(key, true)) {
+    if (!key.fromEntry(*m_entry, true)) {
+        showMessage(key.errorString(), MessageWidget::Error);
         return;
     }
 

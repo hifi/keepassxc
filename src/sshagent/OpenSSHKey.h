@@ -20,6 +20,7 @@
 #define OPENSSHKEY_H
 
 #include "BinaryStream.h"
+#include "core/Entry.h"
 #include <QtCore>
 
 class OpenSSHKey : QObject
@@ -30,6 +31,7 @@ public:
     OpenSSHKey(const OpenSSHKey& other);
     bool operator==(const OpenSSHKey& other) const;
 
+    bool fromEntry(const Entry& e, bool decrypt = false);
     bool parse(const QByteArray& in);
     bool encrypted() const;
     bool openPrivateKey(const QString& passphrase = QString());
