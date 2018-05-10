@@ -593,6 +593,24 @@ void DatabaseWidget::setClipboardTextAndMinimize(const QString& text)
     }
 }
 
+void DatabaseWidget::addToAgent()
+{
+    Entry* currentEntry = m_entryView->currentEntry();
+    Q_ASSERT(currentEntry);
+    if (!currentEntry) {
+        return;
+    }
+
+#ifdef WITH_XC_SSHAGENT
+    OpenSSHKey key;
+    if (key.fromEntry(*currentEntry, true)) {
+        SSHAgent::instance()->addIdentity(key);
+    } else {
+        m_messageWidget->showMessage(key.errorString(), MessageWidget::Error);
+    }
+#endif
+}
+
 void DatabaseWidget::performAutoType()
 {
     Entry* currentEntry = m_entryView->currentEntry();
@@ -1426,6 +1444,16 @@ bool DatabaseWidget::currentEntryHasTotp()
         return false;
     }
     return currentEntry->hasTotp();
+}
+
+bool DatabaseWidget::currentEntryHasSshKey()
+{
+    Entry* currentEntry = m_entryView->currentEntry();
+    Q_ASSERT(currentEntry);
+    if (!currentEntry) {
+        return false;
+    }
+    return currentEntry->hasSshKey();
 }
 
 bool DatabaseWidget::currentEntryHasNotes()
