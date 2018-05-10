@@ -19,6 +19,7 @@
 #include "OpenSSHKey.h"
 #include "ASN1Key.h"
 #include "crypto/SymmetricCipher.h"
+#include "KeeAgentSettings.h"
 #include <QCryptographicHash>
 #include <QRegularExpression>
 #include <QStringList>
@@ -221,6 +222,64 @@ bool OpenSSHKey::parsePEM(const QByteArray& in, QByteArray& out)
     if (out.isEmpty()) {
         m_error = tr("Base64 decoding failed");
         return false;
+    }
+
+    return true;
+}
+
+bool OpenSSHKey::fromEntry(Entry& e, bool decrypt)
+{
+    QString fileName;
+    QByteArray privateKeyData;
+    KeeAgentSettings* settings = e.sshKeySettings();
+
+    if (settings->selectedType() == "attachment") {
+        fileName = settings->attachmentName();
+        privateKeyData = e.attachments()->value(fileName);
+    } else {
+        QFile localFile(settings->fileName());
+        QFileInfo localFileInfo(localFile);
+        fileName = localFileInfo.fileName();
+
+        if (localFile.fileName().isEmpty()) {
+            m_error = tr("Private key is empty");
+            return false;
+        }
+
+        if (localFile.size() > 1024 * 1024) {
+            m_error = tr("File too large to be a private key");
+            return false;
+        }
+
+        if (!localFile.open(QIODevice::ReadOnly)) {
+            m_error = tr("Failed to open private key");
+            return false;
+        }
+
+        privateKeyData = localFile.readAll();
+    }
+
+    if (privateKeyData.isEmpty()) {
+        m_error = tr("Private key is empty");
+        return false;
+    }
+
+    if (!parse(privateKeyData)) {
+        return false;
+    }
+
+    if (encrypted() && (decrypt || m_publicData.isEmpty())) {
+        if (!openPrivateKey(e.password())) {
+            return false;
+        }
+    }
+
+    if (m_comment.isEmpty()) {
+        m_comment = e.username();
+    }
+
+    if (m_comment.isEmpty()) {
+        m_comment = fileName;
     }
 
     return true;

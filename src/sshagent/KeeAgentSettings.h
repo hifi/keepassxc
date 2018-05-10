@@ -22,10 +22,11 @@
 #include <QXmlStreamReader>
 #include <QtCore>
 
-class KeeAgentSettings
+class KeeAgentSettings : public QObject
 {
+    Q_OBJECT
 public:
-    KeeAgentSettings();
+    explicit KeeAgentSettings(QObject* parent = nullptr);
 
     bool operator==(KeeAgentSettings& other);
     bool operator!=(KeeAgentSettings& other);
@@ -57,6 +58,8 @@ public:
     void setAttachmentName(const QString& attachmentName);
     void setSaveAttachmentToTempFile(bool);
     void setFileName(const QString& fileName);
+
+    void copyDataFrom(const KeeAgentSettings* other);
 
 private:
     bool readBool(QXmlStreamReader& reader);

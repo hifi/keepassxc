@@ -267,73 +267,30 @@ void SSHAgent::databaseModeChanged(DatabaseWidget::Mode mode)
                 continue;
             }
 
-            if (!e->attachments()->hasKey("KeeAgent.settings")) {
-                continue;
-            }
+            KeeAgentSettings* settings = e->sshKeySettings();
 
-            KeeAgentSettings settings;
-            settings.fromXml(e->attachments()->value("KeeAgent.settings"));
-
-            if (!settings.allowUseOfSshKey()) {
-                continue;
-            }
-
-            QByteArray keyData;
-            QString fileName;
-            if (settings.selectedType() == "attachment") {
-                fileName = settings.attachmentName();
-                keyData = e->attachments()->value(fileName);
-            } else if (!settings.fileName().isEmpty()) {
-                QFile file(settings.fileName());
-                QFileInfo fileInfo(file);
-
-                fileName = fileInfo.fileName();
-
-                if (file.size() > 1024 * 1024) {
-                    continue;
-                }
-
-                if (!file.open(QIODevice::ReadOnly)) {
-                    continue;
-                }
-
-                keyData = file.readAll();
-            }
-
-            if (keyData.isEmpty()) {
+            if (!settings->allowUseOfSshKey()) {
                 continue;
             }
 
             OpenSSHKey key;
 
-            if (!key.parse(keyData)) {
+            if (!key.fromEntry(*e, true)) {
                 continue;
             }
 
-            if (!key.openPrivateKey(e->password())) {
-                continue;
-            }
-
-            if (key.comment().isEmpty()) {
-                key.setComment(e->username());
-            }
-
-            if (key.comment().isEmpty()) {
-                key.setComment(fileName);
-            }
-
-            if (settings.removeAtDatabaseClose()) {
+            if (settings->removeAtDatabaseClose()) {
                 removeIdentityAtLock(key, uuid);
             }
 
-            if (settings.addAtDatabaseOpen()) {
+            if (settings->addAtDatabaseOpen()) {
                 int lifetime = 0;
 
-                if (settings.useLifetimeConstraintWhenAdding()) {
-                    lifetime = settings.lifetimeConstraintDuration();
+                if (settings->useLifetimeConstraintWhenAdding()) {
+                    lifetime = settings->lifetimeConstraintDuration();
                 }
 
-                if (!addIdentity(key, lifetime, settings.useConfirmConstraintWhenAdding())) {
+                if (!addIdentity(key, lifetime, settings->useConfirmConstraintWhenAdding())) {
                     emit error(m_error);
                 }
             }
