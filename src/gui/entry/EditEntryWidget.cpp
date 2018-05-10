@@ -346,23 +346,25 @@ void EditEntryWidget::setupSSHAgent()
 
 void EditEntryWidget::updateSSHAgent()
 {
-    KeeAgentSettings settings;
-    settings.fromXml(m_advancedUi->attachmentsWidget->getAttachment("KeeAgent.settings"));
+    if (!m_entry) {
+        return;
+    }
 
-    m_sshAgentUi->addKeyToAgentCheckBox->setChecked(settings.addAtDatabaseOpen());
-    m_sshAgentUi->removeKeyFromAgentCheckBox->setChecked(settings.removeAtDatabaseClose());
-    m_sshAgentUi->requireUserConfirmationCheckBox->setChecked(settings.useConfirmConstraintWhenAdding());
-    m_sshAgentUi->lifetimeCheckBox->setChecked(settings.useLifetimeConstraintWhenAdding());
-    m_sshAgentUi->lifetimeSpinBox->setValue(settings.lifetimeConstraintDuration());
+    KeeAgentSettings* settings = m_entry->sshKeySettings();
+
+    m_sshAgentUi->addKeyToAgentCheckBox->setChecked(settings->addAtDatabaseOpen());
+    m_sshAgentUi->removeKeyFromAgentCheckBox->setChecked(settings->removeAtDatabaseClose());
+    m_sshAgentUi->requireUserConfirmationCheckBox->setChecked(settings->useConfirmConstraintWhenAdding());
+    m_sshAgentUi->lifetimeCheckBox->setChecked(settings->useLifetimeConstraintWhenAdding());
+    m_sshAgentUi->lifetimeSpinBox->setValue(settings->lifetimeConstraintDuration());
     m_sshAgentUi->attachmentComboBox->clear();
     m_sshAgentUi->addToAgentButton->setEnabled(false);
     m_sshAgentUi->removeFromAgentButton->setEnabled(false);
     m_sshAgentUi->copyToClipboardButton->setEnabled(false);
 
-    m_sshAgentSettings = settings;
     updateSSHAgentAttachments();
 
-    if (settings.selectedType() == "attachment") {
+    if (settings->selectedType() == "attachment") {
         m_sshAgentUi->attachmentRadioButton->setChecked(true);
     } else {
         m_sshAgentUi->externalFileRadioButton->setChecked(true);
@@ -379,6 +381,10 @@ void EditEntryWidget::updateSSHAgentAttachment()
 
 void EditEntryWidget::updateSSHAgentAttachments()
 {
+    if (!m_entry) {
+        return;
+    }
+
     m_sshAgentUi->attachmentComboBox->clear();
     m_sshAgentUi->attachmentComboBox->addItem("");
 
@@ -391,12 +397,16 @@ void EditEntryWidget::updateSSHAgentAttachments()
         m_sshAgentUi->attachmentComboBox->addItem(fileName);
     }
 
-    m_sshAgentUi->attachmentComboBox->setCurrentText(m_sshAgentSettings.attachmentName());
-    m_sshAgentUi->externalFileEdit->setText(m_sshAgentSettings.fileName());
+    m_sshAgentUi->attachmentComboBox->setCurrentText(m_entry->sshKeySettings()->attachmentName());
+    m_sshAgentUi->externalFileEdit->setText(m_entry->sshKeySettings()->fileName());
 }
 
 void EditEntryWidget::updateSSHAgentKeyInfo()
 {
+    if (!m_entry) {
+        return;
+    }
+
     m_sshAgentUi->addToAgentButton->setEnabled(false);
     m_sshAgentUi->removeFromAgentButton->setEnabled(false);
     m_sshAgentUi->copyToClipboardButton->setEnabled(false);
@@ -442,36 +452,39 @@ void EditEntryWidget::updateSSHAgentKeyInfo()
 
 void EditEntryWidget::saveSSHAgentConfig()
 {
-    KeeAgentSettings settings;
+    if (!m_entry) {
+        return;
+    }
+
+    KeeAgentSettings* settings = m_entry->sshKeySettings();
     QString privateKeyPath = m_sshAgentUi->attachmentComboBox->currentText();
 
-    settings.setAddAtDatabaseOpen(m_sshAgentUi->addKeyToAgentCheckBox->isChecked());
-    settings.setRemoveAtDatabaseClose(m_sshAgentUi->removeKeyFromAgentCheckBox->isChecked());
-    settings.setUseConfirmConstraintWhenAdding(m_sshAgentUi->requireUserConfirmationCheckBox->isChecked());
-    settings.setUseLifetimeConstraintWhenAdding(m_sshAgentUi->lifetimeCheckBox->isChecked());
-    settings.setLifetimeConstraintDuration(m_sshAgentUi->lifetimeSpinBox->value());
+    settings->setAddAtDatabaseOpen(m_sshAgentUi->addKeyToAgentCheckBox->isChecked());
+    settings->setRemoveAtDatabaseClose(m_sshAgentUi->removeKeyFromAgentCheckBox->isChecked());
+    settings->setUseConfirmConstraintWhenAdding(m_sshAgentUi->requireUserConfirmationCheckBox->isChecked());
+    settings->setUseLifetimeConstraintWhenAdding(m_sshAgentUi->lifetimeCheckBox->isChecked());
+    settings->setLifetimeConstraintDuration(m_sshAgentUi->lifetimeSpinBox->value());
 
     if (m_sshAgentUi->attachmentRadioButton->isChecked()) {
-        settings.setSelectedType("attachment");
+        settings->setSelectedType("attachment");
     } else {
-        settings.setSelectedType("file");
+        settings->setSelectedType("file");
     }
-    settings.setAttachmentName(m_sshAgentUi->attachmentComboBox->currentText());
-    settings.setFileName(m_sshAgentUi->externalFileEdit->text());
+    settings->setAttachmentName(m_sshAgentUi->attachmentComboBox->currentText());
+    settings->setFileName(m_sshAgentUi->externalFileEdit->text());
 
     // we don't use this as we don't run an agent but for compatibility we set it if necessary
-    settings.setAllowUseOfSshKey(settings.addAtDatabaseOpen() || settings.removeAtDatabaseClose());
+    settings->setAllowUseOfSshKey(settings->addAtDatabaseOpen() || settings->removeAtDatabaseClose());
 
     // we don't use this either but we don't want it to dirty flag the config
-    settings.setSaveAttachmentToTempFile(m_sshAgentSettings.saveAttachmentToTempFile());
+    settings->setSaveAttachmentToTempFile(settings->saveAttachmentToTempFile());
 
-    if (settings.isDefault()) {
+    if (settings->isDefault()) {
         m_advancedUi->attachmentsWidget->removeAttachment("KeeAgent.settings");
-    } else if (settings != m_sshAgentSettings) {
-        m_advancedUi->attachmentsWidget->setAttachment("KeeAgent.settings", settings.toXml());
+    } else {
+        // FIXME: do we need to do this here?
+        m_advancedUi->attachmentsWidget->setAttachment("KeeAgent.settings", settings->toXml());
     }
-
-    m_sshAgentSettings = settings;
 }
 
 void EditEntryWidget::browsePrivateKey()
@@ -486,6 +499,10 @@ void EditEntryWidget::browsePrivateKey()
 
 void EditEntryWidget::addKeyToAgent()
 {
+    if (!m_entry) {
+        return;
+    }
+
     OpenSSHKey key;
 
     if (!key.fromEntry(*m_entry, true)) {
@@ -515,6 +532,10 @@ void EditEntryWidget::addKeyToAgent()
 
 void EditEntryWidget::removeKeyFromAgent()
 {
+    if (!m_entry) {
+        return;
+    }
+
     OpenSSHKey key;
 
     if (!key.fromEntry(*m_entry)) {
@@ -530,6 +551,10 @@ void EditEntryWidget::removeKeyFromAgent()
 
 void EditEntryWidget::decryptPrivateKey()
 {
+    if (!m_entry) {
+        return;
+    }
+
     OpenSSHKey key;
 
     if (!key.fromEntry(*m_entry, true)) {

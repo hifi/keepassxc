@@ -593,7 +593,7 @@ void DatabaseWidget::setClipboardTextAndMinimize(const QString& text)
     }
 }
 
-void DatabaseWidget::addSSHKeyToAgent()
+void DatabaseWidget::addToAgent()
 {
     Entry* currentEntry = m_entryView->currentEntry();
     Q_ASSERT(currentEntry);
@@ -1446,14 +1446,14 @@ bool DatabaseWidget::currentEntryHasTotp()
     return currentEntry->hasTotp();
 }
 
-bool DatabaseWidget::currentEntryHasSSHKey()
+bool DatabaseWidget::currentEntryHasSshKey()
 {
     Entry* currentEntry = m_entryView->currentEntry();
     Q_ASSERT(currentEntry);
     if (!currentEntry) {
         return false;
     }
-    return currentEntry->hasSSHKey();
+    return currentEntry->hasSshKey();
 }
 
 bool DatabaseWidget::currentEntryHasNotes()

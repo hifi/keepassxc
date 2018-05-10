@@ -227,24 +227,17 @@ bool OpenSSHKey::parsePEM(const QByteArray& in, QByteArray& out)
     return true;
 }
 
-bool OpenSSHKey::fromEntry(const Entry& e, bool decrypt)
+bool OpenSSHKey::fromEntry(Entry& e, bool decrypt)
 {
-    if (!e.attachments()->hasKey("KeeAgent.settings")) {
-        m_error = tr("Entry does not have an SSH key");
-        return false;
-    }
-
-    KeeAgentSettings settings;
-    settings.fromXml(e.attachments()->value("KeeAgent.settings"));
-
     QString fileName;
     QByteArray privateKeyData;
+    KeeAgentSettings* settings = e.sshKeySettings();
 
-    if (settings.selectedType() == "attachment") {
-        fileName = settings.attachmentName();
+    if (settings->selectedType() == "attachment") {
+        fileName = settings->attachmentName();
         privateKeyData = e.attachments()->value(fileName);
     } else {
-        QFile localFile(settings.fileName());
+        QFile localFile(settings->fileName());
         QFileInfo localFileInfo(localFile);
         fileName = localFileInfo.fileName();
 

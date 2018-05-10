@@ -158,7 +158,7 @@ MainWindow::MainWindow()
     if (config()->get("SSHAgent", false).toBool()) {
         m_ui->actionEntryAddToAgent->setVisible(true);
         m_ui->actionEntryAddToAgent->setShortcut(Qt::CTRL + Qt::Key_H);
-        m_actionMultiplexer.connect(m_ui->actionEntryAddToAgent, SIGNAL(triggered()), SLOT(addSSHKeyToAgent()));
+        m_actionMultiplexer.connect(m_ui->actionEntryAddToAgent, SIGNAL(triggered()), SLOT(addToAgent()));
     }
 #endif
 
@@ -479,7 +479,7 @@ void MainWindow::setMenuActionState(DatabaseWidget::Mode mode)
             m_ui->actionExportCsv->setEnabled(true);
             m_ui->actionDatabaseMerge->setEnabled(m_ui->tabWidget->currentIndex() != -1);
 #ifdef WITH_XC_SSHAGENT
-            m_ui->actionEntryAddToAgent->setEnabled(singleEntrySelected && dbWidget->currentEntryHasSSHKey());
+            m_ui->actionEntryAddToAgent->setEnabled(singleEntrySelected && dbWidget->currentEntryHasSshKey());
 #endif
 
             m_searchWidgetAction->setEnabled(true);

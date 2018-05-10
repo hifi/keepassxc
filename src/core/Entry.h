@@ -33,6 +33,7 @@
 #include "core/EntryAttributes.h"
 #include "core/TimeInfo.h"
 #include "core/Uuid.h"
+#include "sshagent/KeeAgentSettings.h"
 
 class Database;
 class Group;
@@ -112,7 +113,8 @@ public:
     CustomData* customData();
     const CustomData* customData() const;
 
-    bool hasSSHKey() const;
+    bool hasSshKey() const;
+    KeeAgentSettings *sshKeySettings();
 
     static const int DefaultIconNumber;
     static const int ResolveMaximumDepth;
@@ -222,6 +224,7 @@ private slots:
     void updateTimeinfo();
     void updateModifiedSinceBegin();
     void updateTotp();
+    void updateSshKeySettings();
 
 private:
     QString resolveMultiplePlaceholdersRecursive(const QString& str, int maxDepth) const;
@@ -240,6 +243,7 @@ private:
     QPointer<EntryAttachments> m_attachments;
     QPointer<AutoTypeAssociations> m_autoTypeAssociations;
     QPointer<CustomData> m_customData;
+    QPointer<KeeAgentSettings> m_sshKeySettings;
 
     QList<Entry*> m_history;
     Entry* m_tmpHistoryItem;

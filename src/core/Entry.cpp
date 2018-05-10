@@ -37,6 +37,7 @@ Entry::Entry()
     , m_attachments(new EntryAttachments(this))
     , m_autoTypeAssociations(new AutoTypeAssociations(this))
     , m_customData(new CustomData(this))
+    , m_sshKeySettings(new KeeAgentSettings(this))
     , m_tmpHistoryItem(nullptr)
     , m_modifiedSinceBegin(false)
     , m_updateTimeinfo(true)
@@ -51,6 +52,7 @@ Entry::Entry()
     connect(m_attributes, SIGNAL(modified()), this, SIGNAL(modified()));
     connect(m_attributes, SIGNAL(defaultKeyModified()), SLOT(emitDataChanged()));
     connect(m_attachments, SIGNAL(modified()), this, SIGNAL(modified()));
+    connect(m_attachments, SIGNAL(modified()), this, SLOT(updateSshKeySettings()));
     connect(m_autoTypeAssociations, SIGNAL(modified()), SIGNAL(modified()));
     connect(m_customData, SIGNAL(modified()), this, SIGNAL(modified()));
 
@@ -417,9 +419,20 @@ quint8 Entry::totpDigits() const
     return m_data.totpDigits;
 }
 
-bool Entry::hasSSHKey() const
+void Entry::updateSshKeySettings()
 {
-    return attachments()->hasKey("KeeAgent.settings");
+    // FIXME: this is called per every attachment
+    m_sshKeySettings->fromXml(attachments()->value("KeeAgent.settings"));
+}
+
+bool Entry::hasSshKey() const
+{
+    return m_sshKeySettings->allowUseOfSshKey();
+}
+
+KeeAgentSettings* Entry::sshKeySettings()
+{
+    return m_sshKeySettings;
 }
 
 void Entry::setUuid(const Uuid& uuid)
@@ -645,6 +658,7 @@ Entry* Entry::clone(CloneFlags flags) const
     entry->m_customData->copyDataFrom(m_customData);
     entry->m_attributes->copyDataFrom(m_attributes);
     entry->m_attachments->copyDataFrom(m_attachments);
+    entry->m_sshKeySettings->copyDataFrom(m_sshKeySettings);
 
     if (flags & CloneUserAsRef) {
         // Build the username reference
@@ -693,6 +707,7 @@ void Entry::copyDataFrom(const Entry* other)
     m_attributes->copyDataFrom(other->m_attributes);
     m_attachments->copyDataFrom(other->m_attachments);
     m_autoTypeAssociations->copyDataFrom(other->m_autoTypeAssociations);
+    m_sshKeySettings->copyDataFrom(other->m_sshKeySettings);
     setUpdateTimeinfo(true);
 }
 

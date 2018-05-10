@@ -106,7 +106,7 @@ public:
     bool currentEntryHasUrl();
     bool currentEntryHasNotes();
     bool currentEntryHasTotp();
-    bool currentEntryHasSSHKey();
+    bool currentEntryHasSshKey();
     GroupView* groupView();
     EntryView* entryView();
     void showUnlockDialog();
@@ -150,7 +150,7 @@ public slots:
     void showTotp();
     void copyTotp();
     void setupTotp();
-    void addSSHKeyToAgent();
+    void addToAgent();
     void performAutoType();
     void openUrl();
     void openUrlForEntry(Entry* entry);

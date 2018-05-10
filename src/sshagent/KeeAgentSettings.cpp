@@ -18,8 +18,9 @@
 
 #include "KeeAgentSettings.h"
 
-KeeAgentSettings::KeeAgentSettings()
-    : m_allowUseOfSshKey(false)
+KeeAgentSettings::KeeAgentSettings(QObject* parent)
+    : QObject(parent)
+    , m_allowUseOfSshKey(false)
     , m_addAtDatabaseOpen(false)
     , m_removeAtDatabaseClose(false)
     , m_useConfirmConstraintWhenAdding(false)
@@ -273,4 +274,18 @@ QByteArray KeeAgentSettings::toXml()
     writer.writeEndDocument();
 
     return ba;
+}
+
+void KeeAgentSettings::copyDataFrom(const KeeAgentSettings* other)
+{
+    m_allowUseOfSshKey = other->m_allowUseOfSshKey;
+    m_addAtDatabaseOpen = other->m_addAtDatabaseOpen;
+    m_removeAtDatabaseClose = other->m_removeAtDatabaseClose;
+    m_useConfirmConstraintWhenAdding = other->m_useConfirmConstraintWhenAdding;
+    m_useLifetimeConstraintWhenAdding = other->m_useLifetimeConstraintWhenAdding;
+    m_lifetimeConstraintDuration = other->m_lifetimeConstraintDuration;
+    m_selectedType = other->m_selectedType;
+    m_attachmentName = other->m_attachmentName;
+    m_saveAttachmentToTempFile = other->m_saveAttachmentToTempFile;
+    m_fileName = other->m_fileName;
 }
