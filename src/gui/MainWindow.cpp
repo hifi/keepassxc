@@ -151,6 +151,15 @@ MainWindow::MainWindow()
     SSHAgent::init(this);
     connect(SSHAgent::instance(), SIGNAL(error(QString)), this, SLOT(showErrorMessage(QString)));
     m_ui->settingsWidget->addSettingsPage(new AgentSettingsPage(m_ui->tabWidget));
+
+    m_ui->actionEntryAddToAgent->setIcon(filePath()->icon("apps", "utilities-terminal"));
+
+    // show toolbar entry only if agent is explicitly enabled
+    if (config()->get("SSHAgent", false).toBool()) {
+        m_ui->actionEntryAddToAgent->setVisible(true);
+        m_ui->actionEntryAddToAgent->setShortcut(Qt::CTRL + Qt::Key_H);
+        m_actionMultiplexer.connect(m_ui->actionEntryAddToAgent, SIGNAL(triggered()), SLOT(addSSHKeyToAgent()));
+    }
 #endif
 
     setWindowIcon(filePath()->applicationIcon());
@@ -469,6 +478,9 @@ void MainWindow::setMenuActionState(DatabaseWidget::Mode mode)
             m_ui->actionDatabaseSaveAs->setEnabled(true);
             m_ui->actionExportCsv->setEnabled(true);
             m_ui->actionDatabaseMerge->setEnabled(m_ui->tabWidget->currentIndex() != -1);
+#ifdef WITH_XC_SSHAGENT
+            m_ui->actionEntryAddToAgent->setEnabled(singleEntrySelected && dbWidget->currentEntryHasSSHKey());
+#endif
 
             m_searchWidgetAction->setEnabled(true);
 
