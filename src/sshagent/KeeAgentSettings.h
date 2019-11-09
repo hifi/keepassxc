@@ -19,6 +19,8 @@
 #ifndef KEEAGENTSETTINGS_H
 #define KEEAGENTSETTINGS_H
 
+#include "core/Entry.h"
+#include "crypto/ssh/OpenSSHKey.h"
 #include <QXmlStreamReader>
 #include <QtCore>
 
@@ -33,6 +35,13 @@ public:
 
     bool fromXml(const QByteArray& ba);
     QByteArray toXml();
+
+    bool inEntry(const Entry& entry);
+    bool fromEntry(const Entry& entry);
+    void toEntry(Entry& entry);
+    bool toOpenSSHKey(const Entry& entry, OpenSSHKey& key, bool decrypt);
+
+    const QString errorString() const;
 
     bool allowUseOfSshKey() const;
     bool addAtDatabaseOpen() const;
@@ -74,6 +83,7 @@ private:
     QString m_attachmentName;
     bool m_saveAttachmentToTempFile;
     QString m_fileName;
+    QString m_error;
 };
 
 #endif // KEEAGENTSETTINGS_H

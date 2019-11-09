@@ -29,6 +29,7 @@ KeeAgentSettings::KeeAgentSettings()
     , m_attachmentName(QString())
     , m_saveAttachmentToTempFile(false)
     , m_fileName(QString())
+    , m_error(QString())
 {
 }
 
@@ -56,6 +57,11 @@ bool KeeAgentSettings::isDefault()
 {
     KeeAgentSettings defaultSettings;
     return (*this == defaultSettings);
+}
+
+const QString KeeAgentSettings::errorString() const
+{
+    return m_error;
 }
 
 bool KeeAgentSettings::allowUseOfSshKey() const
@@ -180,10 +186,12 @@ bool KeeAgentSettings::fromXml(const QByteArray& ba)
     reader.addData(ba);
 
     if (reader.error() || !reader.readNextStartElement()) {
+        m_error = reader.errorString();
         return false;
     }
 
     if (reader.qualifiedName() != "EntrySettings") {
+        m_error = QCoreApplication::translate("KeeAgentSettings", "Invalid KeeAgent settings file structure.");
         return false;
     }
 
@@ -276,3 +284,78 @@ QByteArray KeeAgentSettings::toXml()
 
     return ba;
 }
+
+bool KeeAgentSettings::inEntry(const Entry& entry)
+{
+    return entry.attachments()->hasKey("KeeAgent.settings");
+}
+
+bool KeeAgentSettings::fromEntry(const Entry& entry)
+{
+    return fromXml(entry.attachments()->value("KeeAgent.settings"));
+}
+
+void KeeAgentSettings::toEntry(Entry& entry)
+{
+    entry.attachments()->set("KeeAgent.settings", toXml());
+}
+
+bool KeeAgentSettings::toOpenSSHKey(const Entry& entry, OpenSSHKey& key, bool decrypt)
+{
+    QString fileName;
+    QByteArray privateKeyData;
+
+    if (selectedType() == "attachment") {
+        fileName = m_attachmentName;
+        privateKeyData = entry.attachments()->value(fileName);
+    } else {
+        QFile localFile(m_fileName);
+        QFileInfo localFileInfo(localFile);
+        fileName = localFileInfo.fileName();
+
+        if (localFile.fileName().isEmpty()) {
+            m_error = QCoreApplication::translate("KeeAgentSettings", "Private key is empty");
+            return false;
+        }
+
+        if (localFile.size() > 1024 * 1024) {
+            m_error = QCoreApplication::translate("KeeAgentSettings", "File too large to be a private key");
+            return false;
+        }
+
+        if (!localFile.open(QIODevice::ReadOnly)) {
+            m_error = QCoreApplication::translate("KeeAgentSettings", "Failed to open private key");
+            return false;
+        }
+
+        privateKeyData = localFile.readAll();
+    }
+
+    if (privateKeyData.isEmpty()) {
+        m_error = QCoreApplication::translate("KeeAgentSettings", "Private key is empty");
+        return false;
+    }
+
+    if (!key.parsePKCS1PEM(privateKeyData)) {
+        m_error = key.errorString();
+        return false;
+    }
+
+    if (key.encrypted() && (decrypt || key.publicParts().isEmpty())) {
+        if (!key.openKey(entry.password())) {
+            m_error = key.errorString();
+            return false;
+        }
+    }
+
+    if (key.comment().isEmpty()) {
+        key.setComment(entry.username());
+    }
+
+    if (key.comment().isEmpty()) {
+        key.setComment(fileName);
+    }
+
+    return true;
+}
+
