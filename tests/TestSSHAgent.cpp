@@ -50,7 +50,7 @@ void TestSSHAgent::initTestCase()
     m_agentProcess.closeWriteChannel();
 
     if (!m_agentProcess.waitForStarted()) {
-        QSKIP("ssh-agent could not be started");
+        QFAIL("ssh-agent could not be started");
     }
 
     qDebug() << "ssh-agent started as pid" << m_agentProcess.pid();
