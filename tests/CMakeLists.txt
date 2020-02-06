@@ -165,6 +165,8 @@ endif()
 if(WITH_XC_CRYPTO_SSH)
     add_unit_test(NAME testopensshkey SOURCES TestOpenSSHKey.cpp
             LIBS ${TEST_LIBRARIES})
+    add_unit_test(NAME testsshagent SOURCES TestSSHAgent.cpp
+            LIBS ${TEST_LIBRARIES})
 endif()
 
 add_unit_test(NAME testentry SOURCES TestEntry.cpp

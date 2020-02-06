@@ -49,6 +49,8 @@ public:
     bool isAgentRunning() const;
     bool testConnection();
     bool addIdentity(OpenSSHKey& key, KeeAgentSettings& settings);
+    bool listIdentities(QList<QSharedPointer<OpenSSHKey>>& list);
+    bool checkIdentity(OpenSSHKey& key, bool& loaded);
     bool removeIdentity(OpenSSHKey& key);
     void removeAllIdentities();
     void setAutoRemoveOnLock(const OpenSSHKey& key, bool autoRemove);
