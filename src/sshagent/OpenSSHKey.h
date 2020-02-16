@@ -46,7 +46,7 @@ public:
 
     void setType(const QString& type);
     void setPublicData(const QList<QByteArray>& data);
-    void setPrivateData(const QList<QByteArray>& data);
+    void setPrivateData(const QByteArray& data);
     void setComment(const QString& comment);
 
     void clearPrivate();
@@ -57,7 +57,7 @@ public:
     bool writePrivate(BinaryStream& stream);
 
     QList<QByteArray> publicParts() const;
-    QList<QByteArray> privateParts() const;
+    QByteArray privateParts() const;
 
     static const QString TYPE_DSA_PRIVATE;
     static const QString TYPE_RSA_PRIVATE;
@@ -82,7 +82,7 @@ private:
     QString m_rawType;
     QByteArray m_rawData;
     QList<QByteArray> m_rawPublicData;
-    QList<QByteArray> m_rawPrivateData;
+    QByteArray m_rawPrivateData;
     QString m_comment;
     QString m_error;
 };

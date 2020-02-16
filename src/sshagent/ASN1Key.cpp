@@ -124,7 +124,7 @@ bool ASN1Key::parseDSA(QByteArray& ba, OpenSSHKey& key)
     publicData.append(g);
     publicData.append(y);
 
-    QList<QByteArray> privateData;
+    QByteArray privateData;
     privateData.append(p);
     privateData.append(q);
     privateData.append(g);
@@ -155,7 +155,7 @@ bool ASN1Key::parsePublicRSA(QByteArray& ba, OpenSSHKey& key)
     publicData.append(e);
     publicData.append(n);
 
-    QList<QByteArray> privateData;
+    QByteArray privateData;
     privateData.append(n);
     privateData.append(e);
 
@@ -189,7 +189,7 @@ bool ASN1Key::parsePrivateRSA(QByteArray& ba, OpenSSHKey& key)
     publicData.append(e);
     publicData.append(n);
 
-    QList<QByteArray> privateData;
+    QByteArray privateData;
     privateData.append(n);
     privateData.append(e);
     privateData.append(d);
