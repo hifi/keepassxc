@@ -43,7 +43,7 @@ OpenSSHKey::OpenSSHKey(QObject* parent)
     , m_rawType(QString())
     , m_rawData(QByteArray())
     , m_rawPublicData(QList<QByteArray>())
-    , m_rawPrivateData(QList<QByteArray>())
+    , m_rawPrivateData(QByteArray())
     , m_comment(QString())
     , m_error(QString())
 {
@@ -356,7 +356,9 @@ bool OpenSSHKey::openKey(const QString& passphrase)
     }
 
     if (m_rawType == TYPE_DSA_PRIVATE) {
-        if (!ASN1Key::parseDSA(rawData, m_rawPublicData, m_rawPrivateData)) {
+        QList<QByteArray> rawPrivateData;
+
+        if (!ASN1Key::parseDSA(rawData, m_rawPublicData, rawPrivateData)) {
             m_error = tr("Decryption failed, wrong passphrase?");
             return false;
         }
@@ -364,15 +366,31 @@ bool OpenSSHKey::openKey(const QString& passphrase)
         m_type = "ssh-dss";
         m_comment = "";
 
+        m_rawPrivateData.clear();
+        BinaryStream rawPrivateDataStream(&m_rawPrivateData);
+
+        for (QByteArray t : rawPrivateData) {
+            rawPrivateDataStream.writeString(t);
+        }
+
         return true;
     } else if (m_rawType == TYPE_RSA_PRIVATE) {
-        if (!ASN1Key::parsePrivateRSA(rawData, m_rawPublicData, m_rawPrivateData)) {
+        QList<QByteArray> rawPrivateData;
+
+        if (!ASN1Key::parsePrivateRSA(rawData, m_rawPublicData, rawPrivateData)) {
             m_error = tr("Decryption failed, wrong passphrase?");
             return false;
         }
 
         m_type = "ssh-rsa";
         m_comment = "";
+
+        m_rawPrivateData.clear();
+        BinaryStream rawPrivateDataStream(&m_rawPrivateData);
+
+        for (QByteArray t : rawPrivateData) {
+            rawPrivateDataStream.writeString(t);
+        }
 
         return true;
     } else if (m_rawType == TYPE_OPENSSH_PRIVATE) {
@@ -436,6 +454,7 @@ bool OpenSSHKey::readPublic(BinaryStream& stream)
 bool OpenSSHKey::readPrivate(BinaryStream& stream)
 {
     m_rawPrivateData.clear();
+    BinaryStream privateStream(&m_rawPrivateData);
 
     if (!stream.readString(m_type)) {
         m_error = tr("Unexpected EOF while reading private key");
@@ -451,6 +470,30 @@ bool OpenSSHKey::readPrivate(BinaryStream& stream)
         keyParts = 3;
     } else if (m_type == "ssh-ed25519") {
         keyParts = 2;
+    } else if (m_type == "sk-ecdsa-sha2-nistp256@openssh.com") {
+        QByteArray t;
+
+        for (int i = 0; i < 3; i++) {
+            t.clear();
+
+            if (!stream.readString(t)) {
+                m_error = tr("Unexpected EOF while reading private key");
+                return false;
+            }
+
+            privateStream.writeString(t);
+        }
+
+        quint8 flags;
+
+        if (!stream.read(flags)) {
+            m_error = tr("Unexpected EOF while reading private key");
+            return false;
+        }
+
+        privateStream.write(flags);
+
+        keyParts = 2; // FIXME: ugly
     } else {
         m_error = tr("Unknown key type: %1").arg(m_type);
         return false;
@@ -464,7 +507,7 @@ bool OpenSSHKey::readPrivate(BinaryStream& stream)
             return false;
         }
 
-        m_rawPrivateData.append(t);
+        privateStream.writeString(t);
     }
 
     if (!stream.readString(m_comment)) {
@@ -509,11 +552,9 @@ bool OpenSSHKey::writePrivate(BinaryStream& stream)
         return false;
     }
 
-    for (QByteArray t : m_rawPrivateData) {
-        if (!stream.writeString(t)) {
-            m_error = tr("Unexpected EOF when writing private key");
-            return false;
-        }
+    if (!stream.write(m_rawPrivateData)) {
+        m_error = tr("Unexpected EOF when writing private key");
+        return false;
     }
 
     if (!stream.writeString(m_comment)) {

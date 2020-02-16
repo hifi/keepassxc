@@ -70,7 +70,7 @@ private:
     QString m_rawType;
     QByteArray m_rawData;
     QList<QByteArray> m_rawPublicData;
-    QList<QByteArray> m_rawPrivateData;
+    QByteArray m_rawPrivateData;
     QString m_comment;
     QString m_error;
 };
