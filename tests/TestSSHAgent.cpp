@@ -103,18 +103,27 @@ void TestSSHAgent::testIdentity()
     QVERIFY(agent.testConnection());
 
     const QString keyString = QString("-----BEGIN OPENSSH PRIVATE KEY-----\n"
-                                      "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n"
-                                      "QyNTUxOQAAACDdlO5F2kF2WzedrBAHBi9wBHeISzXZ0IuIqrp0EzeazAAAAKjgCfj94An4\n"
-                                      "/QAAAAtzc2gtZWQyNTUxOQAAACDdlO5F2kF2WzedrBAHBi9wBHeISzXZ0IuIqrp0EzeazA\n"
-                                      "AAAEBe1iilZFho8ZGAliiSj5URvFtGrgvmnEKdiLZow5hOR92U7kXaQXZbN52sEAcGL3AE\n"
-                                      "d4hLNdnQi4iqunQTN5rMAAAAH29wZW5zc2hrZXktdGVzdC1wYXJzZUBrZWVwYXNzeGMBAg\n"
-                                      "MEBQY=\n"
+                                      "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAfwAAACJzay1lY2\n"
+                                      "RzYS1zaGEyLW5pc3RwMjU2QG9wZW5zc2guY29tAAAACG5pc3RwMjU2AAAAQQQ2Pr1d6zUa\n"
+                                      "qcmYgjTGQUF9QPkFEo2Q7aQbvyL/0KL9FObuOfzqxs8mDqswXEsXR4g5L6P7vEe6nPqzSW\n"
+                                      "X9/jJfAAAABHNzaDoAAAD4kyJ795Mie/cAAAAic2stZWNkc2Etc2hhMi1uaXN0cDI1NkBv\n"
+                                      "cGVuc3NoLmNvbQAAAAhuaXN0cDI1NgAAAEEENj69Xes1GqnJmII0xkFBfUD5BRKNkO2kG7\n"
+                                      "8i/9Ci/RTm7jn86sbPJg6rMFxLF0eIOS+j+7xHupz6s0ll/f4yXwAAAARzc2g6AQAAAEA4\n"
+                                      "Dbqd2ub7R1QQRm8nBZWDGJSiNIh58vvJ4EuAh0FnJsRvvASsSDiGuuXqh56wT5xmlnYvbb\n"
+                                      "nLWO4/1+Mp5PaDAAAAAAAAACJvcGVuc3Noa2V5LXRlc3QtZWNkc2Etc2tAa2VlcGFzc3hj\n"
+                                      "AQI=\n"
                                       "-----END OPENSSH PRIVATE KEY-----\n");
 
     const QByteArray keyData = keyString.toLatin1();
 
     OpenSSHKey key;
-    QVERIFY(key.parsePKCS1PEM(keyData));
+    key.parsePKCS1PEM(keyData);
+    QCOMPARE(key.errorString(), QString(""));
+    QVERIFY(!key.encrypted());
+    QCOMPARE(key.cipherName(), QString("none"));
+    QCOMPARE(key.type(), QString("sk-ecdsa-sha2-nistp256@openssh.com"));
+    QCOMPARE(key.comment(), QString("opensshkey-test-ecdsa-sk@keepassxc"));
+    QCOMPARE(key.fingerprint(), QString("SHA256:ctOtAsPMqbtumGI41o2oeWfGDah4m1ACILRj+x0gx0E"));
 
     KeeAgentSettings settings;
     bool keyInAgent;
