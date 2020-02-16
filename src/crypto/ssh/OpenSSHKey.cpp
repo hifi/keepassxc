@@ -669,6 +669,8 @@ bool OpenSSHKey::readPublic(BinaryStream& stream)
         keyParts = 2;
     } else if (m_type == "ssh-ed25519") {
         keyParts = 1;
+    } else if (m_type == "sk-ecdsa-sha2-nistp256@openssh.com") {
+        keyParts = 3;
     } else {
         m_error = tr("Unknown key type: %1").arg(m_type);
         return false;
@@ -706,6 +708,34 @@ bool OpenSSHKey::readPrivate(BinaryStream& stream)
         keyParts = 3;
     } else if (m_type == "ssh-ed25519") {
         keyParts = 2;
+    } else if (m_type == "sk-ecdsa-sha2-nistp256@openssh.com") {
+        QByteArray t;
+
+        for (int i = 0; i < 3; i++) {
+            if (!stream.readString(t)) {
+                m_error = tr("Unexpected EOF while reading private key");
+                return false;
+            }
+
+            m_rawPrivateData.append(t);
+        }
+
+        quint8 flags;
+        if (!stream.read(flags)) {
+            m_error = tr("Unexpected EOF while reading private key");
+            return false;
+        }
+
+        for (int i = 0; i < 2; i++) {
+            if (!stream.readString(t)) {
+                m_error = tr("Unexpected EOF while reading private key");
+                return false;
+            }
+
+            m_rawPrivateData.append(t);
+        }
+
+        keyParts = 0;
     } else {
         m_error = tr("Unknown key type: %1").arg(m_type);
         return false;
