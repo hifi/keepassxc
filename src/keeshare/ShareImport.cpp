@@ -53,7 +53,6 @@ namespace
         if (!sign.signature.isEmpty()) {
             certificate = sign.certificate;
             auto key = sign.certificate.sshKey();
-            key.openKey(QString());
             const auto signer = Signature();
             if (!signer.verify(data, sign.signature, key)) {
                 qCritical("Invalid signature for shared container %s.", qPrintable(reference.path));

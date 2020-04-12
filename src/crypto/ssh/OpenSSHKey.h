@@ -27,8 +27,6 @@ class OpenSSHKey : public QObject
 {
     Q_OBJECT
 public:
-    static OpenSSHKey generate(bool secure = true);
-
     explicit OpenSSHKey(QObject* parent = nullptr);
     OpenSSHKey(const OpenSSHKey& other);
     bool operator==(const OpenSSHKey& other) const;
@@ -43,12 +41,8 @@ public:
     const QString fingerprint(QCryptographicHash::Algorithm algo = QCryptographicHash::Sha256) const;
     const QString comment() const;
     const QString publicKey() const;
-    const QString privateKey() const;
     const QString errorString() const;
 
-    void setType(const QString& type);
-    void setPublicData(const QList<QByteArray>& data);
-    void setPrivateData(const QList<QByteArray>& data);
     void setComment(const QString& comment);
 
     void clearPrivate();
@@ -58,27 +52,15 @@ public:
     bool writePublic(BinaryStream& stream);
     bool writePrivate(BinaryStream& stream);
 
-    QList<QByteArray> publicParts() const;
-    QList<QByteArray> privateParts() const;
+    QList<QByteArray> publicData() const;
+    QList<QByteArray> privateData() const;
     const QString& privateType() const;
 
     static const QString TYPE_DSA_PRIVATE;
     static const QString TYPE_RSA_PRIVATE;
-    static const QString TYPE_RSA_PUBLIC;
     static const QString TYPE_OPENSSH_PRIVATE;
 
-    enum Type
-    {
-        Public,
-        Private
-    };
-
-    static OpenSSHKey restoreFromBinary(Type eType, const QByteArray& serialized);
-    static QByteArray serializeToBinary(Type eType, const OpenSSHKey& key);
-
 private:
-    bool extractPEM(const QByteArray& in, QByteArray& out);
-
     QString m_type;
     QString m_cipherName;
     QByteArray m_cipherIV;

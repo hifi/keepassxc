@@ -29,7 +29,7 @@
 #include "core/Metadata.h"
 #include "crypto/Crypto.h"
 #include "crypto/Random.h"
-#include "crypto/ssh/OpenSSHKey.h"
+#include "crypto/ssh/RSAKey.h"
 #include "format/KeePass2Writer.h"
 #include "keeshare/KeeShareSettings.h"
 #include "keys/PasswordKey.h"
@@ -142,10 +142,10 @@ void TestSharing::testNullObjects()
 void TestSharing::testCertificateSerialization()
 {
     QFETCH(KeeShareSettings::Trust, trusted);
-    const OpenSSHKey& key = stubkey();
+    const RSAKey& key = stubkey();
     KeeShareSettings::ScopedCertificate original;
     original.path = "/path";
-    original.certificate = KeeShareSettings::Certificate{OpenSSHKey::serializeToBinary(OpenSSHKey::Public, key),
+    original.certificate = KeeShareSettings::Certificate{RSAKey::serializeToBinary(RSAKey::Public, key),
                                                          "Some <!> &#_\"\" weird string"};
     original.trust = trusted;
 
@@ -179,9 +179,9 @@ void TestSharing::testCertificateSerialization_data()
 
 void TestSharing::testKeySerialization()
 {
-    const OpenSSHKey& key = stubkey();
+    const RSAKey& key = stubkey();
     KeeShareSettings::Key original;
-    original.key = OpenSSHKey::serializeToBinary(OpenSSHKey::Private, key);
+    original.key = RSAKey::serializeToBinary(RSAKey::Private, key);
 
     QString buffer;
     QXmlStreamWriter writer(&buffer);
@@ -197,7 +197,6 @@ void TestSharing::testKeySerialization()
 
     QCOMPARE(restored.key, original.key);
     QCOMPARE(restored.sshKey().privateParts(), key.privateParts());
-    QCOMPARE(restored.sshKey().type(), key.type());
 }
 
 void TestSharing::testReferenceSerialization()
@@ -273,21 +272,21 @@ void TestSharing::testSettingsSerialization()
 
 void TestSharing::testSettingsSerialization_data()
 {
-    const OpenSSHKey& sshKey0 = stubkey(0);
+    const RSAKey& sshKey0 = stubkey(0);
     KeeShareSettings::ScopedCertificate certificate0;
     certificate0.path = "/path/0";
-    certificate0.certificate = KeeShareSettings::Certificate{OpenSSHKey::serializeToBinary(OpenSSHKey::Public, sshKey0),
+    certificate0.certificate = KeeShareSettings::Certificate{RSAKey::serializeToBinary(RSAKey::Public, sshKey0),
                                                              "Some <!> &#_\"\" weird string"};
     certificate0.trust = KeeShareSettings::Trust::Trusted;
 
     KeeShareSettings::Key key0;
-    key0.key = OpenSSHKey::serializeToBinary(OpenSSHKey::Private, sshKey0);
+    key0.key = RSAKey::serializeToBinary(RSAKey::Private, sshKey0);
 
-    const OpenSSHKey& sshKey1 = stubkey(1);
+    const RSAKey& sshKey1 = stubkey(1);
     KeeShareSettings::ScopedCertificate certificate1;
     certificate1.path = "/path/1";
     certificate1.certificate =
-        KeeShareSettings::Certificate{OpenSSHKey::serializeToBinary(OpenSSHKey::Public, sshKey1), "Another "};
+        KeeShareSettings::Certificate{RSAKey::serializeToBinary(RSAKey::Public, sshKey1), "Another "};
     certificate1.trust = KeeShareSettings::Trust::Untrusted;
 
     QTest::addColumn<bool>("importing");
@@ -307,11 +306,11 @@ void TestSharing::testSettingsSerialization_data()
                        << QList<KeeShareSettings::ScopedCertificate>({certificate1});
 }
 
-const OpenSSHKey& TestSharing::stubkey(int index)
+const RSAKey& TestSharing::stubkey(int index)
 {
-    static QMap<int, OpenSSHKey*> keys;
+    static QMap<int, RSAKey*> keys;
     if (!keys.contains(index)) {
-        OpenSSHKey* key = new OpenSSHKey(OpenSSHKey::generate(false));
+        RSAKey* key = new RSAKey(RSAKey::generate(false));
         key->setParent(this);
         keys[index] = key;
     }

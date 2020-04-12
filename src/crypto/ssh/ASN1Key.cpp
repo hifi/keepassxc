@@ -126,7 +126,7 @@ namespace
     }
 } // namespace
 
-bool ASN1Key::parseDSA(QByteArray& ba, OpenSSHKey& key)
+bool ASN1Key::parseDSA(QByteArray& ba, QList<QByteArray>& publicData, QList<QByteArray>& privateData)
 {
     BinaryStream stream(&ba);
 
@@ -141,27 +141,23 @@ bool ASN1Key::parseDSA(QByteArray& ba, OpenSSHKey& key)
     readInt(stream, y);
     readInt(stream, x);
 
-    QList<QByteArray> publicData;
+    publicData.clear();
     publicData.append(p);
     publicData.append(q);
     publicData.append(g);
     publicData.append(y);
 
-    QList<QByteArray> privateData;
+    privateData.clear();
     privateData.append(p);
     privateData.append(q);
     privateData.append(g);
     privateData.append(y);
     privateData.append(x);
 
-    key.setType("ssh-dss");
-    key.setPublicData(publicData);
-    key.setPrivateData(privateData);
-    key.setComment("");
     return true;
 }
 
-bool ASN1Key::parsePublicRSA(QByteArray& ba, OpenSSHKey& key)
+bool ASN1Key::parsePublicRSA(QByteArray& ba, QList<QByteArray>& publicData, QList<QByteArray>& privateData)
 {
     BinaryStream stream(&ba);
 
@@ -173,22 +169,18 @@ bool ASN1Key::parsePublicRSA(QByteArray& ba, OpenSSHKey& key)
     readInt(stream, n);
     readInt(stream, e);
 
-    QList<QByteArray> publicData;
+    publicData.clear();
     publicData.append(e);
     publicData.append(n);
 
-    QList<QByteArray> privateData;
+    privateData.clear();
     privateData.append(n);
     privateData.append(e);
 
-    key.setType("ssh-rsa");
-    key.setPublicData(publicData);
-    key.setPrivateData(privateData);
-    key.setComment("");
     return true;
 }
 
-bool ASN1Key::parsePrivateRSA(QByteArray& ba, OpenSSHKey& key)
+bool ASN1Key::parsePrivateRSA(QByteArray& ba, QList<QByteArray>& publicData, QList<QByteArray>& privateData)
 {
     BinaryStream stream(&ba);
 
@@ -206,11 +198,11 @@ bool ASN1Key::parsePrivateRSA(QByteArray& ba, OpenSSHKey& key)
     readInt(stream, dq);
     readInt(stream, qinv);
 
-    QList<QByteArray> publicData;
+    publicData.clear();
     publicData.append(e);
     publicData.append(n);
 
-    QList<QByteArray> privateData;
+    privateData.clear();
     privateData.append(n);
     privateData.append(e);
     privateData.append(d);
@@ -218,9 +210,5 @@ bool ASN1Key::parsePrivateRSA(QByteArray& ba, OpenSSHKey& key)
     privateData.append(p);
     privateData.append(q);
 
-    key.setType("ssh-rsa");
-    key.setPublicData(publicData);
-    key.setPrivateData(privateData);
-    key.setComment("");
     return true;
 }

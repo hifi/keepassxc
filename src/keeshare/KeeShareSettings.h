@@ -21,7 +21,7 @@
 #include <QMap>
 #include <QObject>
 
-#include "crypto/ssh/OpenSSHKey.h"
+#include "crypto/ssh/RSAKey.h"
 
 class CustomData;
 class QXmlStreamWriter;
@@ -40,7 +40,7 @@ namespace KeeShareSettings
         bool isNull() const;
         QString fingerprint() const;
         QString publicKey() const;
-        OpenSSHKey sshKey() const;
+        RSAKey sshKey() const;
 
         static void serialize(QXmlStreamWriter& writer, const Certificate& certificate);
         static Certificate deserialize(QXmlStreamReader& reader);
@@ -55,7 +55,7 @@ namespace KeeShareSettings
 
         bool isNull() const;
         QString privateKey() const;
-        OpenSSHKey sshKey() const;
+        RSAKey sshKey() const;
 
         static void serialize(QXmlStreamWriter& writer, const Key& key);
         static Key deserialize(QXmlStreamReader& reader);

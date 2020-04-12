@@ -404,7 +404,7 @@ bool KeeAgentSettings::toOpenSSHKey(const Entry* entry, OpenSSHKey& key, bool de
         return false;
     }
 
-    if (key.encrypted() && (decrypt || key.publicParts().isEmpty())) {
+    if (key.encrypted() && (decrypt || key.publicData().isEmpty())) {
         if (!key.openKey(entry->password())) {
             m_error = key.errorString();
             return false;

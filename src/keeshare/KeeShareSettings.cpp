@@ -21,7 +21,7 @@
 #include "core/DatabaseIcons.h"
 #include "core/Group.h"
 #include "core/Metadata.h"
-#include "crypto/ssh/OpenSSHKey.h"
+#include "crypto/ssh/RSAKey.h"
 #include "keeshare/Signature.h"
 
 #include <QMessageBox>
@@ -34,40 +34,36 @@ namespace KeeShareSettings
 {
     namespace
     {
-        Certificate packCertificate(const OpenSSHKey& key, const QString& signer)
+        Certificate packCertificate(const RSAKey& key, const QString& signer)
         {
             KeeShareSettings::Certificate extracted;
             extracted.signer = signer;
-            Q_ASSERT(key.type() == "ssh-rsa");
-            extracted.key = OpenSSHKey::serializeToBinary(OpenSSHKey::Public, key);
+            extracted.key = RSAKey::serializeToBinary(RSAKey::Public, key);
             return extracted;
         }
 
-        Key packKey(const OpenSSHKey& key)
+        Key packKey(const RSAKey& key)
         {
             KeeShareSettings::Key extracted;
-            Q_ASSERT(key.type() == "ssh-rsa");
-            extracted.key = OpenSSHKey::serializeToBinary(OpenSSHKey::Private, key);
+            extracted.key = RSAKey::serializeToBinary(RSAKey::Private, key);
             return extracted;
         }
 
-        OpenSSHKey unpackKey(const Key& sign)
+        RSAKey unpackKey(const Key& sign)
         {
             if (sign.key.isEmpty()) {
-                return OpenSSHKey();
+                return RSAKey();
             }
-            OpenSSHKey key = OpenSSHKey::restoreFromBinary(OpenSSHKey::Private, sign.key);
-            Q_ASSERT(key.type() == "ssh-rsa");
+            RSAKey key = RSAKey::restoreFromBinary(RSAKey::Private, sign.key);
             return key;
         }
 
-        OpenSSHKey unpackCertificate(const Certificate& certificate)
+        RSAKey unpackCertificate(const Certificate& certificate)
         {
             if (certificate.key.isEmpty()) {
-                return OpenSSHKey();
+                return RSAKey();
             }
-            OpenSSHKey key = OpenSSHKey::restoreFromBinary(OpenSSHKey::Public, certificate.key);
-            Q_ASSERT(key.type() == "ssh-rsa");
+            RSAKey key = RSAKey::restoreFromBinary(RSAKey::Public, certificate.key);
             return key;
         }
 
@@ -137,7 +133,7 @@ namespace KeeShareSettings
         return sshKey().fingerprint();
     }
 
-    OpenSSHKey Certificate::sshKey() const
+    RSAKey Certificate::sshKey() const
     {
         return unpackCertificate(*this);
     }
@@ -186,7 +182,7 @@ namespace KeeShareSettings
         return sshKey().privateKey();
     }
 
-    OpenSSHKey Key::sshKey() const
+    RSAKey Key::sshKey() const
     {
         return unpackKey(*this);
     }
@@ -208,8 +204,7 @@ namespace KeeShareSettings
 
     Own Own::generate()
     {
-        OpenSSHKey key = OpenSSHKey::generate(false);
-        key.openKey(QString());
+        RSAKey key = RSAKey::generate(false);
         Own own;
         own.key = packKey(key);
         const QString name = qgetenv("USER"); // + "@" + QHostInfo::localHostName();

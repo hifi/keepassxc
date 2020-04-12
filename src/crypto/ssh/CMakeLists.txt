@@ -4,7 +4,9 @@ if(WITH_XC_CRYPTO_SSH)
     set(crypto_ssh_SOURCES
         bcrypt_pbkdf.cpp
         blowfish.c
+        PEM.cpp
         ASN1Key.cpp
+        RSAKey.cpp
         BinaryStream.cpp
         OpenSSHKey.cpp
     )

@@ -18,8 +18,8 @@
 
 #include "OpenSSHKey.h"
 
-#include "core/Tools.h"
 #include "crypto/SymmetricCipher.h"
+#include "crypto/ssh/PEM.h"
 #include "crypto/ssh/ASN1Key.h"
 #include "crypto/ssh/BinaryStream.h"
 
@@ -27,183 +27,12 @@
 #include <QRegularExpression>
 #include <QStringList>
 
-#include <gcrypt.h>
-
 const QString OpenSSHKey::TYPE_DSA_PRIVATE = "DSA PRIVATE KEY";
 const QString OpenSSHKey::TYPE_RSA_PRIVATE = "RSA PRIVATE KEY";
-const QString OpenSSHKey::TYPE_RSA_PUBLIC = "RSA PUBLIC KEY";
 const QString OpenSSHKey::TYPE_OPENSSH_PRIVATE = "OPENSSH PRIVATE KEY";
-
-namespace
-{
-    QPair<QString, QList<QByteArray>> binaryDeserialize(const QByteArray& serialized)
-    {
-        if (serialized.isEmpty()) {
-            return {};
-        }
-        QBuffer buffer;
-        buffer.setData(serialized);
-        buffer.open(QBuffer::ReadOnly);
-        BinaryStream stream(&buffer);
-        QString type;
-        stream.readString(type);
-        QByteArray temp;
-        QList<QByteArray> data;
-        while (stream.readString(temp)) {
-            data << temp;
-        }
-        return ::qMakePair(type, data);
-    }
-
-    QByteArray binarySerialize(const QString& type, const QList<QByteArray>& data)
-    {
-        if (type.isEmpty() && data.isEmpty()) {
-            return {};
-        }
-        QByteArray buffer;
-        BinaryStream stream(&buffer);
-        stream.writeString(type);
-        for (const QByteArray& part : data) {
-            stream.writeString(part);
-        }
-        return buffer;
-    }
-} // namespace
 
 // bcrypt_pbkdf.cpp
 int bcrypt_pbkdf(const QByteArray& pass, const QByteArray& salt, QByteArray& key, quint32 rounds);
-
-OpenSSHKey OpenSSHKey::generate(bool secure)
-{
-    enum Index
-    {
-        Params,
-        CombinedKey,
-        PrivateKey,
-        PublicKey,
-
-        Private_N,
-        Private_E,
-        Private_D,
-        Private_P,
-        Private_Q,
-        Private_U, // private key
-        Public_N,
-        Public_E,
-    };
-
-    Tools::Map<Index, gcry_mpi_t, &gcry_mpi_release> mpi;
-    Tools::Map<Index, gcry_sexp_t, &gcry_sexp_release> sexp;
-    gcry_error_t rc = GPG_ERR_NO_ERROR;
-    rc = gcry_sexp_build(&sexp[Params],
-                         NULL,
-                         secure ? "(genkey (rsa (nbits 4:2048)))" : "(genkey (rsa (transient-key) (nbits 4:2048)))");
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not create ssh key" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-
-    rc = gcry_pk_genkey(&sexp[CombinedKey], sexp[Params]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not create ssh key" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-
-    sexp[PrivateKey] = gcry_sexp_find_token(sexp[CombinedKey], "private-key", 0);
-    sexp[PublicKey] = gcry_sexp_find_token(sexp[CombinedKey], "public-key", 0);
-
-    sexp[Private_N] = gcry_sexp_find_token(sexp[PrivateKey], "n", 1);
-    mpi[Private_N] = gcry_sexp_nth_mpi(sexp[Private_N], 1, GCRYMPI_FMT_USG);
-    sexp[Private_E] = gcry_sexp_find_token(sexp[PrivateKey], "e", 1);
-    mpi[Private_E] = gcry_sexp_nth_mpi(sexp[Private_E], 1, GCRYMPI_FMT_USG);
-    sexp[Private_D] = gcry_sexp_find_token(sexp[PrivateKey], "d", 1);
-    mpi[Private_D] = gcry_sexp_nth_mpi(sexp[Private_D], 1, GCRYMPI_FMT_USG);
-    sexp[Private_Q] = gcry_sexp_find_token(sexp[PrivateKey], "q", 1);
-    mpi[Private_Q] = gcry_sexp_nth_mpi(sexp[Private_Q], 1, GCRYMPI_FMT_USG);
-    sexp[Private_P] = gcry_sexp_find_token(sexp[PrivateKey], "p", 1);
-    mpi[Private_P] = gcry_sexp_nth_mpi(sexp[Private_P], 1, GCRYMPI_FMT_USG);
-    sexp[Private_U] = gcry_sexp_find_token(sexp[PrivateKey], "u", 1);
-    mpi[Private_U] = gcry_sexp_nth_mpi(sexp[Private_U], 1, GCRYMPI_FMT_USG);
-
-    sexp[Public_N] = gcry_sexp_find_token(sexp[PublicKey], "n", 1);
-    mpi[Public_N] = gcry_sexp_nth_mpi(sexp[Public_N], 1, GCRYMPI_FMT_USG);
-    sexp[Public_E] = gcry_sexp_find_token(sexp[PublicKey], "e", 1);
-    mpi[Public_E] = gcry_sexp_nth_mpi(sexp[Public_E], 1, GCRYMPI_FMT_USG);
-
-    QList<QByteArray> publicParts;
-    QList<QByteArray> privateParts;
-    Tools::Buffer buffer;
-    gcry_mpi_format format = GCRYMPI_FMT_USG;
-    rc = gcry_mpi_aprint(format, &buffer.raw, &buffer.size, mpi[Private_N]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not extract private key part" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-    privateParts << buffer.content();
-
-    buffer.clear();
-    rc = gcry_mpi_aprint(format, &buffer.raw, &buffer.size, mpi[Private_E]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not extract private key part" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-    privateParts << buffer.content();
-
-    buffer.clear();
-    rc = gcry_mpi_aprint(format, &buffer.raw, &buffer.size, mpi[Private_D]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not extract private key part" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-    privateParts << buffer.content();
-
-    buffer.clear();
-    rc = gcry_mpi_aprint(format, &buffer.raw, &buffer.size, mpi[Private_U]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not extract private key part" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-    privateParts << buffer.content();
-
-    buffer.clear();
-    rc = gcry_mpi_aprint(format, &buffer.raw, &buffer.size, mpi[Private_P]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not extract private key part" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-    privateParts << buffer.content();
-
-    buffer.clear();
-    rc = gcry_mpi_aprint(format, &buffer.raw, &buffer.size, mpi[Private_Q]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not extract private key part" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-    privateParts << buffer.content();
-
-    buffer.clear();
-    rc = gcry_mpi_aprint(format, &buffer.raw, &buffer.size, mpi[Public_E]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not extract public key part" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-    publicParts << buffer.content();
-
-    buffer.clear();
-    rc = gcry_mpi_aprint(format, &buffer.raw, &buffer.size, mpi[Public_N]);
-    if (rc != GPG_ERR_NO_ERROR) {
-        qWarning() << "Could not extract public key part" << gcry_err_code(rc);
-        return OpenSSHKey();
-    }
-    publicParts << buffer.content();
-    OpenSSHKey key;
-    key.m_rawType = OpenSSHKey::TYPE_RSA_PRIVATE;
-    key.setType("ssh-rsa");
-    key.setPublicData(publicParts);
-    key.setPrivateData(privateParts);
-    key.setComment("");
-    return key;
-}
 
 OpenSSHKey::OpenSSHKey(QObject* parent)
     : QObject(parent)
@@ -301,24 +130,6 @@ const QString OpenSSHKey::comment() const
     return m_comment;
 }
 
-const QString OpenSSHKey::privateKey() const
-{
-    if (m_rawPrivateData.isEmpty()) {
-        return {};
-    }
-
-    QByteArray privateKey;
-    BinaryStream stream(&privateKey);
-
-    stream.writeString(m_type);
-
-    for (QByteArray ba : m_rawPrivateData) {
-        stream.writeString(ba);
-    }
-
-    return m_type + " " + QString::fromLatin1(privateKey.toBase64()) + " " + m_comment;
-}
-
 const QString OpenSSHKey::publicKey() const
 {
     if (m_rawPublicData.isEmpty()) {
@@ -342,21 +153,6 @@ const QString OpenSSHKey::errorString() const
     return m_error;
 }
 
-void OpenSSHKey::setType(const QString& type)
-{
-    m_type = type;
-}
-
-void OpenSSHKey::setPublicData(const QList<QByteArray>& data)
-{
-    m_rawPublicData = data;
-}
-
-void OpenSSHKey::setPrivateData(const QList<QByteArray>& data)
-{
-    m_rawPrivateData = data;
-}
-
 void OpenSSHKey::setComment(const QString& comment)
 {
     m_comment = comment;
@@ -368,79 +164,27 @@ void OpenSSHKey::clearPrivate()
     m_rawPrivateData.clear();
 }
 
-bool OpenSSHKey::extractPEM(const QByteArray& in, QByteArray& out)
-{
-    QString pem = QString::fromLatin1(in);
-    QStringList rows = pem.split(QRegularExpression("(?:\r?\n|\r)"), QString::SkipEmptyParts);
-
-    if (rows.length() < 3) {
-        m_error = tr("Invalid key file, expecting an OpenSSH key");
-        return false;
-    }
-
-    QString begin = rows.first();
-    QString end = rows.last();
-
-    QRegularExpressionMatch beginMatch = QRegularExpression("^-----BEGIN ([^\\-]+)-----$").match(begin);
-    QRegularExpressionMatch endMatch = QRegularExpression("^-----END ([^\\-]+)-----$").match(end);
-
-    if (!beginMatch.hasMatch() || !endMatch.hasMatch()) {
-        m_error = tr("Invalid key file, expecting an OpenSSH key");
-        return false;
-    }
-
-    if (beginMatch.captured(1) != endMatch.captured(1)) {
-        m_error = tr("PEM boundary mismatch");
-        return false;
-    }
-
-    m_rawType = beginMatch.captured(1);
-
-    rows.removeFirst();
-    rows.removeLast();
-
-    QRegularExpression keyValueExpr = QRegularExpression("^([A-Za-z0-9-]+): (.+)$");
-    QMap<QString, QString> pemOptions;
-
-    do {
-        QRegularExpressionMatch keyValueMatch = keyValueExpr.match(rows.first());
-
-        if (!keyValueMatch.hasMatch()) {
-            break;
-        }
-
-        pemOptions.insert(keyValueMatch.captured(1), keyValueMatch.captured(2));
-
-        rows.removeFirst();
-    } while (!rows.isEmpty());
-
-    if (pemOptions.value("Proc-Type").compare("4,encrypted", Qt::CaseInsensitive) == 0) {
-        m_kdfName = "md5";
-        m_cipherName = pemOptions.value("DEK-Info").section(",", 0, 0);
-        m_cipherIV = QByteArray::fromHex(pemOptions.value("DEK-Info").section(",", 1, 1).toLatin1());
-    }
-
-    out = QByteArray::fromBase64(rows.join("").toLatin1());
-
-    if (out.isEmpty()) {
-        m_error = tr("Base64 decoding failed");
-        return false;
-    }
-
-    return true;
-}
-
 bool OpenSSHKey::parsePKCS1PEM(const QByteArray& in)
 {
-    QByteArray data;
+    PEM pem;
 
-    if (!extractPEM(in, data)) {
+    if (!pem.parse(in)) {
+        m_error = pem.error();
         return false;
     }
 
-    if (m_rawType == TYPE_DSA_PRIVATE || m_rawType == TYPE_RSA_PRIVATE || m_rawType == TYPE_RSA_PUBLIC) {
-        m_rawData = data;
+    m_rawType = pem.type();
+
+    if (pem.options().value("Proc-Type").compare("4,encrypted", Qt::CaseInsensitive) == 0) {
+        m_kdfName = "md5";
+        m_cipherName = pem.options().value("DEK-Info").section(",", 0, 0);
+        m_cipherIV = QByteArray::fromHex(pem.options().value("DEK-Info").section(",", 1, 1).toLatin1());
+    }
+
+    if (m_rawType == TYPE_DSA_PRIVATE || m_rawType == TYPE_RSA_PRIVATE) {
+        m_rawData = pem.data();
     } else if (m_rawType == TYPE_OPENSSH_PRIVATE) {
+        QByteArray data = pem.data();
         BinaryStream stream(&data);
 
         QByteArray magic;
@@ -612,23 +356,24 @@ bool OpenSSHKey::openKey(const QString& passphrase)
     }
 
     if (m_rawType == TYPE_DSA_PRIVATE) {
-        if (!ASN1Key::parseDSA(rawData, *this)) {
+        if (!ASN1Key::parseDSA(rawData, m_rawPublicData, m_rawPrivateData)) {
             m_error = tr("Decryption failed, wrong passphrase?");
             return false;
         }
 
+        m_type = "ssh-dss";
+        m_comment = "";
+
         return true;
     } else if (m_rawType == TYPE_RSA_PRIVATE) {
-        if (!ASN1Key::parsePrivateRSA(rawData, *this)) {
+        if (!ASN1Key::parsePrivateRSA(rawData, m_rawPublicData, m_rawPrivateData)) {
             m_error = tr("Decryption failed, wrong passphrase?");
             return false;
         }
-        return true;
-    } else if (m_rawType == TYPE_RSA_PUBLIC) {
-        if (!ASN1Key::parsePublicRSA(rawData, *this)) {
-            m_error = tr("Decryption failed, wrong passphrase?");
-            return false;
-        }
+
+        m_type = "ssh-rsa";
+        m_comment = "";
+
         return true;
     } else if (m_rawType == TYPE_OPENSSH_PRIVATE) {
         BinaryStream keyStream(&rawData);
@@ -779,47 +524,9 @@ bool OpenSSHKey::writePrivate(BinaryStream& stream)
     return true;
 }
 
-QList<QByteArray> OpenSSHKey::publicParts() const
-{
-    return m_rawPublicData;
-}
-
-QList<QByteArray> OpenSSHKey::privateParts() const
-{
-    return m_rawPrivateData;
-}
-
 const QString& OpenSSHKey::privateType() const
 {
     return m_rawType;
-}
-
-OpenSSHKey OpenSSHKey::restoreFromBinary(Type type, const QByteArray& serialized)
-{
-    OpenSSHKey key;
-    auto data = binaryDeserialize(serialized);
-    key.setType(data.first);
-    switch (type) {
-    case Public:
-        key.setPublicData(data.second);
-        break;
-    case Private:
-        key.setPrivateData(data.second);
-        break;
-    }
-    return key;
-}
-
-QByteArray OpenSSHKey::serializeToBinary(Type type, const OpenSSHKey& key)
-{
-    Q_ASSERT(!key.encrypted());
-    switch (type) {
-    case Public:
-        return binarySerialize(key.type(), key.publicParts());
-    case Private:
-        return binarySerialize(key.type(), key.privateParts());
-    }
-    return {};
 }
 
 uint qHash(const OpenSSHKey& key)

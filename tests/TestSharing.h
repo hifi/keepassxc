@@ -21,7 +21,7 @@
 #include <QObject>
 #include <QSharedPointer>
 
-class OpenSSHKey;
+class RSAKey;
 
 class TestSharing : public QObject
 {
@@ -41,7 +41,7 @@ private slots:
     void testSettingsSerialization_data();
 
 private:
-    const OpenSSHKey& stubkey(int iIndex = 0);
+    const RSAKey& stubkey(int iIndex = 0);
 };
 
 #endif // KEEPASSXC_TESTSHARING_H

@@ -19,7 +19,7 @@
 #include "core/Tools.h"
 #include "crypto/Crypto.h"
 #include "crypto/CryptoHash.h"
-#include "crypto/ssh/OpenSSHKey.h"
+#include "crypto/ssh/RSAKey.h"
 
 #include <QByteArray>
 #include <gcrypt.h>
@@ -44,7 +44,7 @@ struct RSASigner
     {
     }
 
-    QString sign(const QByteArray& data, const OpenSSHKey& key)
+    QString sign(const QByteArray& data, const RSAKey& key)
     {
         enum Index
         {
@@ -150,7 +150,7 @@ struct RSASigner
         return QString("rsa|%1").arg(QString::fromLatin1(buffer.content().toHex()));
     }
 
-    bool verify(const QByteArray& data, const OpenSSHKey& key, const QString& signature)
+    bool verify(const QByteArray& data, const RSAKey& key, const QString& signature)
     {
         const gcry_mpi_format format = GCRYMPI_FMT_USG;
         enum MPI
@@ -226,35 +226,27 @@ struct RSASigner
     }
 };
 
-QString Signature::create(const QByteArray& data, const OpenSSHKey& key)
+QString Signature::create(const QByteArray& data, const RSAKey& key)
 {
     // TODO HNH: currently we publish the signature in our own non-standard format - it would
     //           be better to use a standard format (like ASN1 - but this would be more easy
     //           when we integrate a proper library)
     //           Even more, we could publish standard self signed certificates with the container
     //           instead of the custom certificates
-    if (key.type() == "ssh-rsa") {
-        RSASigner signer;
-        QString result = signer.sign(data, key);
-        if (signer.rc != GPG_ERR_NO_ERROR) {
-            ::qWarning() << signer.error;
-        }
-        return result;
+    RSASigner signer;
+    QString result = signer.sign(data, key);
+    if (signer.rc != GPG_ERR_NO_ERROR) {
+        ::qWarning() << signer.error;
     }
-    ::qWarning() << "Unsupported Public/Private key format";
-    return QString();
+    return result;
 }
 
-bool Signature::verify(const QByteArray& data, const QString& signature, const OpenSSHKey& key)
+bool Signature::verify(const QByteArray& data, const QString& signature, const RSAKey& key)
 {
-    if (key.type() == "ssh-rsa") {
-        RSASigner signer;
-        bool result = signer.verify(data, key, signature);
-        if (signer.rc != GPG_ERR_NO_ERROR) {
-            ::qWarning() << signer.error;
-        }
-        return result;
+    RSASigner signer;
+    bool result = signer.verify(data, key, signature);
+    if (signer.rc != GPG_ERR_NO_ERROR) {
+        ::qWarning() << signer.error;
     }
-    ::qWarning() << "Unsupported Public/Private key format";
-    return false;
+    return result;
 }

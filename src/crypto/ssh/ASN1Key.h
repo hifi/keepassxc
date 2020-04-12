@@ -19,14 +19,14 @@
 #ifndef KEEPASSXC_ASN1KEY_H
 #define KEEPASSXC_ASN1KEY_H
 
-#include "OpenSSHKey.h"
 #include <QtCore>
+#include <QByteArray>
 
 namespace ASN1Key
 {
-    bool parseDSA(QByteArray& ba, OpenSSHKey& key);
-    bool parsePrivateRSA(QByteArray& ba, OpenSSHKey& key);
-    bool parsePublicRSA(QByteArray& ba, OpenSSHKey& key);
+    bool parseDSA(QByteArray& ba, QList<QByteArray>& publicData, QList<QByteArray>& privateData);
+    bool parsePrivateRSA(QByteArray& ba, QList<QByteArray>& publicData, QList<QByteArray>& privateData);
+    bool parsePublicRSA(QByteArray& ba, QList<QByteArray>& publicData, QList<QByteArray>& privateData);
 } // namespace ASN1Key
 
 #endif // KEEPASSXC_ASN1KEY_H

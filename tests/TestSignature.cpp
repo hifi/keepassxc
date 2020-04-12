@@ -22,7 +22,7 @@
 #include <QBuffer>
 
 #include "crypto/Crypto.h"
-#include "crypto/ssh/OpenSSHKey.h"
+#include "crypto/ssh/RSAKey.h"
 #include "keeshare/Signature.h"
 
 QTEST_GUILESS_MAIN(TestSignature)
@@ -114,9 +114,9 @@ void TestSignature::initTestCase()
 
 void TestSignature::testSigningOpenSSH_RSA_PrivateOnly()
 {
-    OpenSSHKey privateKey;
+    RSAKey privateKey;
     privateKey.parsePKCS1PEM(rsa_2_private);
-    privateKey.openKey(QString());
+    privateKey.openKey();
     QCOMPARE(privateKey.fingerprint(), QString("SHA256:ZAQ/W1QdW59OaIh/0hs3ePl2og5TjXnGX5L0iN7WtNA"));
     Signature signer;
     const QString sign = signer.create(data, privateKey);
@@ -131,17 +131,17 @@ void TestSignature::testSigningOpenSSH_RSA_PrivateOnly()
 
 void TestSignature::testSigningOpenSSH_RSA()
 {
-    OpenSSHKey privateKey;
+    RSAKey privateKey;
     privateKey.parsePKCS1PEM(rsa_2_private);
-    privateKey.openKey(QString());
+    privateKey.openKey();
     QCOMPARE(privateKey.fingerprint(), QString("SHA256:ZAQ/W1QdW59OaIh/0hs3ePl2og5TjXnGX5L0iN7WtNA"));
     Signature signer;
     const QString sign = signer.create(data, privateKey);
     QVERIFY(!sign.isEmpty());
 
-    OpenSSHKey publicKey;
+    RSAKey publicKey;
     publicKey.parsePKCS1PEM(rsa_2_public);
-    publicKey.openKey(QString());
+    publicKey.openKey();
     QCOMPARE(publicKey.fingerprint(), QString("SHA256:ZAQ/W1QdW59OaIh/0hs3ePl2og5TjXnGX5L0iN7WtNA"));
 
     Signature verifier;
@@ -151,8 +151,8 @@ void TestSignature::testSigningOpenSSH_RSA()
 
 void TestSignature::testSigningGenerated_RSA_PrivateOnly()
 {
-    OpenSSHKey privateKey = OpenSSHKey::generate(false);
-    privateKey.openKey(QString());
+    RSAKey privateKey = RSAKey::generate(false);
+    privateKey.openKey();
 
     Signature signer;
     const QString sign = signer.create(data, privateKey);
@@ -165,9 +165,9 @@ void TestSignature::testSigningGenerated_RSA_PrivateOnly()
 
 void TestSignature::testSigningTest_RSA_PrivateOnly()
 {
-    OpenSSHKey privateKey;
+    RSAKey privateKey;
     privateKey.parsePKCS1PEM(rsa_1_private);
-    privateKey.openKey(QString());
+    privateKey.openKey();
     QCOMPARE(privateKey.fingerprint(), QString("SHA256:DYdaZciYNxCejr+/8x+OKYxeTU1D5UsuIFUG4PWRFkk"));
     Signature signer;
     const QString sign = signer.create(data, privateKey);
@@ -180,17 +180,17 @@ void TestSignature::testSigningTest_RSA_PrivateOnly()
 
 void TestSignature::testSigningTest_RSA()
 {
-    OpenSSHKey privateKey;
+    RSAKey privateKey;
     privateKey.parsePKCS1PEM(rsa_1_private);
-    privateKey.openKey(QString());
+    privateKey.openKey();
     QCOMPARE(privateKey.fingerprint(), QString("SHA256:DYdaZciYNxCejr+/8x+OKYxeTU1D5UsuIFUG4PWRFkk"));
     Signature signer;
     const QString sign = signer.create(data, privateKey);
     QVERIFY(!sign.isEmpty());
 
-    OpenSSHKey publicKey;
+    RSAKey publicKey;
     publicKey.parsePKCS1PEM(rsa_1_public);
-    publicKey.openKey(QString());
+    publicKey.openKey();
     QCOMPARE(publicKey.fingerprint(), QString("SHA256:DYdaZciYNxCejr+/8x+OKYxeTU1D5UsuIFUG4PWRFkk"));
     Signature verifier;
     const bool verified = verifier.verify(data, sign, publicKey);
