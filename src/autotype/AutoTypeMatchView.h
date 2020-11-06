@@ -19,42 +19,45 @@
 #ifndef KEEPASSX_AUTOTYPEMATCHVIEW_H
 #define KEEPASSX_AUTOTYPEMATCHVIEW_H
 
-#include <QTreeView>
+#include <QTableView>
 
-#include "core/AutoTypeMatch.h"
+#include "autotype/AutoTypeMatch.h"
+#include "autotype/AutoTypeMatchModel.h"
 
-#include "gui/entry/AutoTypeMatchModel.h"
+class QSortFilterProxyModel;
 
-class SortFilterHideProxyModel;
-
-class AutoTypeMatchView : public QTreeView
+class AutoTypeMatchView : public QTableView
 {
     Q_OBJECT
 
 public:
     explicit AutoTypeMatchView(QWidget* parent = nullptr);
     AutoTypeMatch currentMatch();
-    void setCurrentMatch(const AutoTypeMatch& match);
     AutoTypeMatch matchFromIndex(const QModelIndex& index);
     void setMatchList(const QList<AutoTypeMatch>& matches);
-    void setFirstMatchActive();
+    void filterList(const QString& filter);
 
 signals:
     void matchActivated(AutoTypeMatch match);
-    void matchSelectionChanged();
-    void matchTextCopied();
+    void rejected();
+
+    // public slots:
+    //    void filterMatches(const QString& filterString);
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
 
+protected slots:
+    void currentChanged(const QModelIndex& current, const QModelIndex& previous) override;
+
 private slots:
-    void emitMatchActivated(const QModelIndex& index);
-    void userNameCopied();
-    void passwordCopied();
+    void copyUsername();
+    void copyPassword();
+    void performSequence(const QString& sequence);
 
 private:
     AutoTypeMatchModel* const m_model;
-    SortFilterHideProxyModel* const m_sortModel;
+    QSortFilterProxyModel* const m_sortModel;
 };
 
 #endif // KEEPASSX_AUTOTYPEMATCHVIEW_H

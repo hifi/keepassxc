@@ -1,4 +1,5 @@
 /*
+ *  Copyright (C) 2020 Team KeePassXC <team@keepassxc.org>
  *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -18,14 +19,16 @@
 #ifndef KEEPASSX_AUTOTYPESELECTDIALOG_H
 #define KEEPASSX_AUTOTYPESELECTDIALOG_H
 
-#include <QAbstractItemModel>
+#include "autotype/AutoTypeMatch.h"
 #include <QDialog>
-#include <QHash>
+#include <QTimer>
 
-#include "autotype/AutoTypeFilterLineEdit.h"
-#include "core/AutoTypeMatch.h"
+class Database;
 
-class AutoTypeSelectView;
+namespace Ui
+{
+    class AutoTypeSelectDialog;
+}
 
 class AutoTypeSelectDialog : public QDialog
 {
@@ -34,27 +37,29 @@ class AutoTypeSelectDialog : public QDialog
 public:
     explicit AutoTypeSelectDialog(QWidget* parent = nullptr);
     void setMatchList(const QList<AutoTypeMatch>& matchList);
+    void setDatabaseList(const QList<QSharedPointer<Database>>& dbs);
 
 signals:
     void matchActivated(AutoTypeMatch match);
 
-public slots:
-    void done(int r) override;
-    void reject() override;
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
 
 private slots:
-    void emitMatchActivated(const QModelIndex& index);
-    void matchRemoved();
-    void filterList(QString filterString);
+    void submitAutoTypeMatch(AutoTypeMatch match);
+    void performSearch();
     void moveSelectionUp();
     void moveSelectionDown();
     void activateCurrentIndex();
 
 private:
-    AutoTypeSelectView* const m_view;
-    AutoTypeFilterLineEdit* const m_filterLineEdit;
-    bool m_matchActivatedEmitted;
-    bool m_rejected;
+    // For some reason QScopedPointer causes compiler errors here...
+    QSharedPointer<Ui::AutoTypeSelectDialog> m_ui;
+
+    QList<QSharedPointer<Database>> m_dbs;
+    QList<AutoTypeMatch> m_originalMatches;
+    QTimer m_searchTimer;
 };
 
 #endif // KEEPASSX_AUTOTYPESELECTDIALOG_H

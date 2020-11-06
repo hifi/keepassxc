@@ -1,6 +1,6 @@
 /*
- *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
  *  Copyright (C) 2020 KeePassXC Team <team@keepassxc.org>
+ *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,42 +17,43 @@
  */
 
 #include "AutoTypeSelectDialog.h"
+#include "ui_AutoTypeSelectDialog.h"
 
 #include <QApplication>
+#include <QCloseEvent>
+#include <QShortcut>
+#include <QSortFilterProxyModel>
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 #include <QScreen>
 #else
 #include <QDesktopWidget>
 #endif
-#include <QDialogButtonBox>
-#include <QHeaderView>
-#include <QLabel>
-#include <QLineEdit>
-#include <QSortFilterProxyModel>
-#include <QVBoxLayout>
 
-#include "autotype/AutoTypeSelectView.h"
-#include "core/AutoTypeMatch.h"
 #include "core/Config.h"
+#include "core/Database.h"
+#include "core/Entry.h"
+#include "core/EntrySearcher.h"
 #include "gui/Icons.h"
-#include "gui/entry/AutoTypeMatchModel.h"
 
 AutoTypeSelectDialog::AutoTypeSelectDialog(QWidget* parent)
     : QDialog(parent)
-    , m_view(new AutoTypeSelectView(this))
-    , m_filterLineEdit(new AutoTypeFilterLineEdit(this))
-    , m_matchActivatedEmitted(false)
-    , m_rejected(false)
+    , m_ui(new Ui::AutoTypeSelectDialog())
 {
     setAttribute(Qt::WA_DeleteOnClose);
     // Places the window on the active (virtual) desktop instead of where the main window is.
     setAttribute(Qt::WA_X11BypassTransientForHint);
     setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
-    setWindowTitle(tr("Auto-Type - KeePassXC"));
     setWindowIcon(icons()->applicationIcon());
 
+    m_ui->setupUi(this);
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-    QRect screenGeometry = QApplication::screenAt(QCursor::pos())->availableGeometry();
+    auto screen = QApplication::screenAt(QCursor::pos());
+    if (!screen) {
+        // screenAt can return a nullptr, default to the primary screen
+        screen = QApplication::primaryScreen();
+    }
+    QRect screenGeometry = screen->availableGeometry();
 #else
     QRect screenGeometry = QApplication::desktop()->availableGeometry(QCursor::pos());
 #endif
@@ -62,123 +63,146 @@ AutoTypeSelectDialog::AutoTypeSelectDialog(QWidget* parent)
     resize(size);
 
     // move dialog to the center of the screen
-    QPoint screenCenter = screenGeometry.center();
+    auto screenCenter = screenGeometry.center();
     move(screenCenter.x() - (size.width() / 2), screenCenter.y() - (size.height() / 2));
 
-    QVBoxLayout* layout = new QVBoxLayout(this);
+    connect(m_ui->view, SIGNAL(matchActivated(AutoTypeMatch)), SLOT(submitAutoTypeMatch(AutoTypeMatch)));
+    connect(m_ui->view, SIGNAL(rejected()), SLOT(reject()));
 
-    QLabel* descriptionLabel = new QLabel(tr("Select entry to Auto-Type:"), this);
-    layout->addWidget(descriptionLabel);
+    m_ui->search->setFocus();
+    m_ui->search->installEventFilter(this);
 
-    // clang-format off
-    connect(m_view, SIGNAL(activated(QModelIndex)), SLOT(emitMatchActivated(QModelIndex)));
-    connect(m_view, SIGNAL(clicked(QModelIndex)), SLOT(emitMatchActivated(QModelIndex)));
-    connect(m_view->model(), SIGNAL(rowsRemoved(QModelIndex,int,int)), SLOT(matchRemoved()));
-    connect(m_view, SIGNAL(rejected()), SLOT(reject()));
-    connect(m_view, SIGNAL(matchTextCopied()), SLOT(reject()));
-    // clang-format on
+    m_searchTimer.setInterval(300);
+    m_searchTimer.setSingleShot(true);
 
-    QSortFilterProxyModel* proxy = qobject_cast<QSortFilterProxyModel*>(m_view->model());
-    if (proxy) {
-        proxy->setFilterKeyColumn(-1);
-        proxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
-    }
+    connect(m_ui->search, SIGNAL(textChanged(QString)), &m_searchTimer, SLOT(start()));
+    connect(m_ui->search, SIGNAL(returnPressed()), SLOT(activateCurrentIndex()));
+    connect(&m_searchTimer, SIGNAL(timeout()), SLOT(performSearch()));
 
-    layout->addWidget(m_view);
+    connect(m_ui->filterRadio, &QRadioButton::toggled, this, [this](bool checked) {
+        if (checked) {
+            // Reset to original match list
+            m_ui->view->setMatchList(m_originalMatches);
+            performSearch();
+            m_ui->search->setFocus();
+        }
+    });
+    connect(m_ui->searchRadio, &QRadioButton::toggled, this, [this](bool checked) {
+        if (checked) {
+            performSearch();
+            m_ui->search->setFocus();
+        }
+    });
 
-    connect(m_filterLineEdit, SIGNAL(textChanged(QString)), SLOT(filterList(QString)));
-    connect(m_filterLineEdit, SIGNAL(returnPressed()), SLOT(activateCurrentIndex()));
-    connect(m_filterLineEdit, SIGNAL(keyUpPressed()), SLOT(moveSelectionUp()));
-    connect(m_filterLineEdit, SIGNAL(keyDownPressed()), SLOT(moveSelectionDown()));
-    connect(m_filterLineEdit, SIGNAL(escapeReleased()), SLOT(reject()));
-
-    m_filterLineEdit->setPlaceholderText(tr("Search..."));
-    layout->addWidget(m_filterLineEdit);
-
-    QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Cancel, Qt::Horizontal, this);
-    connect(buttonBox, SIGNAL(rejected()), SLOT(reject()));
-    layout->addWidget(buttonBox);
-
-    m_filterLineEdit->setFocus();
+    connect(m_ui->buttonBox, SIGNAL(rejected()), SLOT(reject()));
 }
 
 void AutoTypeSelectDialog::setMatchList(const QList<AutoTypeMatch>& matchList)
 {
-    m_view->setMatchList(matchList);
-
-    m_view->header()->resizeSections(QHeaderView::ResizeToContents);
-}
-
-void AutoTypeSelectDialog::done(int r)
-{
-    config()->set(Config::GUI_AutoTypeSelectDialogSize, size());
-
-    QDialog::done(r);
-}
-
-void AutoTypeSelectDialog::reject()
-{
-    m_rejected = true;
-
-    QDialog::reject();
-}
-
-void AutoTypeSelectDialog::emitMatchActivated(const QModelIndex& index)
-{
-    // make sure we don't emit the signal twice when both activated() and clicked() are triggered
-    if (m_matchActivatedEmitted) {
-        return;
+    m_originalMatches = matchList;
+    m_ui->view->setMatchList(matchList);
+    if (matchList.isEmpty()) {
+        m_ui->searchRadio->setChecked(true);
+    } else {
+        m_ui->filterRadio->setChecked(true);
     }
-    m_matchActivatedEmitted = true;
+}
 
-    AutoTypeMatch match = m_view->matchFromIndex(index);
+void AutoTypeSelectDialog::setDatabaseList(const QList<QSharedPointer<Database>>& dbs)
+{
+    m_dbs = dbs;
+}
+
+void AutoTypeSelectDialog::submitAutoTypeMatch(AutoTypeMatch match)
+{
     accept();
     emit matchActivated(match);
 }
 
-void AutoTypeSelectDialog::matchRemoved()
+void AutoTypeSelectDialog::performSearch()
 {
-    if (m_rejected) {
+    if (m_ui->filterRadio->isChecked()) {
+        m_ui->view->filterList(m_ui->search->text());
         return;
     }
 
-    if (m_view->model()->rowCount() == 0 && m_filterLineEdit->text().isEmpty()) {
-        reject();
-    }
-}
-
-void AutoTypeSelectDialog::filterList(QString filterString)
-{
-    QSortFilterProxyModel* proxy = qobject_cast<QSortFilterProxyModel*>(m_view->model());
-    if (proxy) {
-        proxy->setFilterWildcard(filterString);
-        if (!m_view->currentIndex().isValid()) {
-            m_view->setCurrentIndex(m_view->model()->index(0, 0));
+    EntrySearcher searcher;
+    QList<AutoTypeMatch> matches;
+    if (!m_ui->search->text().isEmpty()) {
+        for (const auto& db : m_dbs) {
+            auto found = searcher.search(m_ui->search->text(), db->rootGroup());
+            for (auto entry : found) {
+                QSet<QString> sequences;
+                auto defSequence = entry->effectiveAutoTypeSequence();
+                if (!defSequence.isEmpty()) {
+                    matches.append({entry, defSequence});
+                    sequences << defSequence;
+                }
+                for (auto assoc : entry->autoTypeAssociations()->getAll()) {
+                    if (!sequences.contains(assoc.sequence) && !assoc.sequence.isEmpty()) {
+                        matches.append({entry, assoc.sequence});
+                        sequences << assoc.sequence;
+                    }
+                }
+            }
         }
     }
+
+    m_ui->view->setMatchList(matches);
 }
 
 void AutoTypeSelectDialog::moveSelectionUp()
 {
-    auto current = m_view->currentIndex();
+    auto current = m_ui->view->currentIndex();
     auto previous = current.sibling(current.row() - 1, 0);
 
     if (previous.isValid()) {
-        m_view->setCurrentIndex(previous);
+        m_ui->view->setCurrentIndex(previous);
     }
 }
 
 void AutoTypeSelectDialog::moveSelectionDown()
 {
-    auto current = m_view->currentIndex();
+    auto current = m_ui->view->currentIndex();
     auto next = current.sibling(current.row() + 1, 0);
 
     if (next.isValid()) {
-        m_view->setCurrentIndex(next);
+        m_ui->view->setCurrentIndex(next);
     }
 }
 
 void AutoTypeSelectDialog::activateCurrentIndex()
 {
-    emitMatchActivated(m_view->currentIndex());
+    submitAutoTypeMatch(m_ui->view->currentMatch());
+}
+
+bool AutoTypeSelectDialog::eventFilter(QObject* obj, QEvent* event)
+{
+    if (event->type() == QEvent::KeyPress) {
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+        switch (keyEvent->key()) {
+        case Qt::Key_Up:
+            moveSelectionUp();
+            return true;
+        case Qt::Key_Down:
+            moveSelectionDown();
+            return true;
+        case Qt::Key_Escape:
+            if (m_ui->search->text().isEmpty()) {
+                reject();
+            } else {
+                m_ui->search->clear();
+            }
+            return true;
+        default:
+            break;
+        }
+    }
+    return QDialog::eventFilter(obj, event);
+}
+
+void AutoTypeSelectDialog::closeEvent(QCloseEvent* event)
+{
+    config()->set(Config::GUI_AutoTypeSelectDialogSize, size());
+    event->accept();
 }

@@ -20,6 +20,7 @@
 #include "config-keepassx.h"
 
 #include "core/Clock.h"
+#include "core/Config.h"
 #include "core/Database.h"
 #include "core/DatabaseIcons.h"
 #include "core/Group.h"
@@ -280,6 +281,70 @@ QString Entry::effectiveAutoTypeSequence() const
     }
 
     return sequence;
+}
+
+/**
+ * Retrive the autotype sequences matches for a given windowTitle
+ * This returns a list with priority ordering. If you don't want duplicates call .toSet() on it.
+ */
+QList<QString> Entry::autoTypeSequences(const QString& windowTitle) const
+{
+    auto windowMatches = [&](const QString& pattern) {
+        // Regex searching
+        if (pattern.startsWith("//") && pattern.endsWith("//") && pattern.size() >= 4) {
+            QRegExp regExp(pattern.mid(2, pattern.size() - 4), Qt::CaseInsensitive, QRegExp::RegExp2);
+            return (regExp.indexIn(windowTitle) != -1);
+        }
+
+        // Wildcard searching
+        auto regex = Tools::convertToRegex(pattern, true, false, false);
+        return windowTitle.contains(regex);
+    };
+
+    auto windowMatchesTitle = [&](const QString& entryTitle) {
+        return !entryTitle.isEmpty() && windowTitle.contains(entryTitle, Qt::CaseInsensitive);
+    };
+
+    auto windowMatchesUrl = [&](const QString& entryUrl) {
+        if (!entryUrl.isEmpty() && windowTitle.contains(entryUrl, Qt::CaseInsensitive)) {
+            return true;
+        }
+
+        QUrl url(entryUrl);
+        if (url.isValid() && !url.host().isEmpty()) {
+            return windowTitle.contains(url.host(), Qt::CaseInsensitive);
+        }
+
+        return false;
+    };
+
+    QList<QString> sequenceList;
+    if (!windowTitle.isEmpty()) {
+        const auto assocList = autoTypeAssociations()->getAll();
+        for (const auto& assoc : assocList) {
+            auto window = resolveMultiplePlaceholders(assoc.window);
+            if (windowMatches(window)) {
+                if (!assoc.sequence.isEmpty()) {
+                    sequenceList.append(assoc.sequence);
+                } else {
+                    sequenceList.append(effectiveAutoTypeSequence());
+                }
+            }
+        }
+
+        if (config()->get(Config::AutoTypeEntryTitleMatch).toBool()
+            && windowMatchesTitle(resolvePlaceholder(title()))) {
+            sequenceList.append(effectiveAutoTypeSequence());
+        }
+
+        if (config()->get(Config::AutoTypeEntryURLMatch).toBool() && windowMatchesUrl(resolvePlaceholder(url()))) {
+            sequenceList.append(effectiveAutoTypeSequence());
+        }
+    } else {
+        sequenceList.append(effectiveAutoTypeSequence());
+    }
+
+    return sequenceList;
 }
 
 AutoTypeAssociations* Entry::autoTypeAssociations()

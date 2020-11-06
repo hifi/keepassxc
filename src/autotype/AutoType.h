@@ -24,7 +24,7 @@
 #include <QStringList>
 #include <QWidget>
 
-#include "core/AutoTypeMatch.h"
+#include "autotype/AutoTypeMatch.h"
 
 class AutoTypeAction;
 class AutoTypeExecutor;
@@ -89,10 +89,6 @@ private:
                                 WId window = 0);
     bool parseActions(const QString& sequence, const Entry* entry, QList<AutoTypeAction*>& actions);
     QList<AutoTypeAction*> createActionFromTemplate(const QString& tmpl, const Entry* entry);
-    QList<QString> autoTypeSequences(const Entry* entry, const QString& windowTitle = QString());
-    bool windowMatchesTitle(const QString& windowTitle, const QString& resolvedTitle);
-    bool windowMatchesUrl(const QString& windowTitle, const QString& resolvedUrl);
-    bool windowMatches(const QString& windowTitle, const QString& windowPattern);
     void restoreWindowState();
 
     QMutex m_inAutoType;
