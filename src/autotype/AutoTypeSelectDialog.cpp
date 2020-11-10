@@ -75,6 +75,11 @@ AutoTypeSelectDialog::AutoTypeSelectDialog(QWidget* parent)
     m_searchTimer.setInterval(300);
     m_searchTimer.setSingleShot(true);
 
+    m_ui->action->installEventFilter(this);
+    m_ui->action->addItem("Type sequence", QVariant::fromValue(static_cast<int>(Action::TYPE_SEQUENCE)));
+    m_ui->action->addItem("Type {USERNAME}", QVariant::fromValue(static_cast<int>(Action::TYPE_USERNAME)));
+    m_ui->action->addItem("Type {PASSWORD}", QVariant::fromValue(static_cast<int>(Action::TYPE_PASSWORD)));
+
     connect(m_ui->search, SIGNAL(textChanged(QString)), &m_searchTimer, SLOT(start()));
     connect(m_ui->search, SIGNAL(returnPressed()), SLOT(activateCurrentIndex()));
     connect(&m_searchTimer, SIGNAL(timeout()), SLOT(performSearch()));
@@ -173,7 +178,20 @@ void AutoTypeSelectDialog::moveSelectionDown()
 
 void AutoTypeSelectDialog::activateCurrentIndex()
 {
-    submitAutoTypeMatch(m_ui->view->currentMatch());
+    auto match = m_ui->view->currentMatch();
+
+    switch (m_ui->action->currentIndex()) {
+        case static_cast<int>(Action::TYPE_USERNAME):
+            match.second = QString("{USERNAME}");
+            break;
+        case static_cast<int>(Action::TYPE_PASSWORD):
+            match.second = QString("{PASSWORD}");
+            break;
+        default:
+            break;
+    }
+
+    submitAutoTypeMatch(match);
 }
 
 bool AutoTypeSelectDialog::eventFilter(QObject* obj, QEvent* event)
@@ -182,17 +200,27 @@ bool AutoTypeSelectDialog::eventFilter(QObject* obj, QEvent* event)
         QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
         switch (keyEvent->key()) {
         case Qt::Key_Up:
-            moveSelectionUp();
-            return true;
+            if (obj == m_ui->search) {
+                moveSelectionUp();
+                return true;
+            }
+            break;
         case Qt::Key_Down:
-            moveSelectionDown();
-            return true;
+            if (obj == m_ui->search) {
+                moveSelectionDown();
+                return true;
+            }
+            break;
         case Qt::Key_Escape:
             if (m_ui->search->text().isEmpty()) {
                 reject();
             } else {
                 m_ui->search->clear();
             }
+            return true;
+        case Qt::Key_Return:
+        case Qt::Key_Enter:
+            activateCurrentIndex();
             return true;
         default:
             break;

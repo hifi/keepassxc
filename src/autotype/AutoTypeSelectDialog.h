@@ -54,6 +54,16 @@ private slots:
     void activateCurrentIndex();
 
 private:
+    enum Action {
+        TYPE_SEQUENCE,
+        TYPE_USERNAME,
+        TYPE_PASSWORD,
+        TYPE_TOTP,
+        COPY_USERNAME,
+        COPY_PASSWORD,
+        COPY_TOTP
+    };
+
     // For some reason QScopedPointer causes compiler errors here...
     QSharedPointer<Ui::AutoTypeSelectDialog> m_ui;
 
