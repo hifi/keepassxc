@@ -84,6 +84,7 @@ AutoTypeSelectDialog::AutoTypeSelectDialog(QWidget* parent)
         }
     });
 
+    m_actionMenu->installEventFilter(this);
     m_ui->action->setMenu(m_actionMenu);
     m_ui->action->installEventFilter(this);
     connect(m_ui->action, &QToolButton::clicked, this, &AutoTypeSelectDialog::activateCurrentMatch);
@@ -173,18 +174,35 @@ void AutoTypeSelectDialog::activateCurrentMatch()
 bool AutoTypeSelectDialog::eventFilter(QObject* obj, QEvent* event)
 {
     if (obj == m_ui->action) {
-        if (event->type() == QEvent::KeyPress && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Down) {
-            // Workaround Qt not selecting the first available action
-            QTimer::singleShot(100, [this] {
-                for (auto action : m_actionMenu->actions()) {
-                    if (action->isEnabled()) {
-                        m_actionMenu->setActiveAction(action);
-                        return;
-                    }
-                }
-            });
+        if (event->type() == QEvent::FocusIn) {
             m_ui->action->showMenu();
             return true;
+        } else if (event->type() == QEvent::KeyPress && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Return) {
+            // handle case where the menu is closed but the button has focus
+            activateCurrentMatch();
+            return true;
+        }
+    } else if (obj == m_actionMenu) {
+        if (event->type() == QEvent::KeyPress) {
+            QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+            switch (keyEvent->key()) {
+            case Qt::Key_Tab:
+                m_actionMenu->close();
+                focusNextPrevChild(true);
+                return true;
+            case Qt::Key_Backtab:
+                m_actionMenu->close();
+                focusNextPrevChild(false);
+                return true;
+            case Qt::Key_Return:
+                // accept the dialog with default sequence if no action selected
+                if (m_actionMenu->activeAction() == nullptr) {
+                    activateCurrentMatch();
+                    return true;
+                }
+            default:
+                break;
+            }
         }
     } else if (obj == m_ui->search) {
         if (event->type() == QEvent::KeyPress) {
