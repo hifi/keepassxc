@@ -20,31 +20,12 @@
 
 #include <QString>
 
-class Crypto
+namespace Crypto
 {
-public:
-    static bool init();
-    static bool initialized();
-    static bool backendSelfTest();
-    static QString errorString();
-    static QString debugInfo();
-
-private:
-    Crypto();
-    static bool checkAlgorithms();
-    static bool selfTest();
-    static void raiseError(const QString& str);
-    static bool testSha256();
-    static bool testSha512();
-    static bool testAes256Cbc();
-    static bool testAes256Ecb();
-    static bool testTwofish();
-    static bool testSalsa20();
-    static bool testChaCha20();
-
-    static bool m_initialized;
-    static QString m_errorStr;
-    static QString m_backendVersion;
-};
+    bool init();
+    bool initialized();
+    QString errorString();
+    QString debugInfo();
+}; // namespace Crypto
 
 #endif // KEEPASSX_CRYPTO_H

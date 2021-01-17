@@ -24,10 +24,8 @@
 
 #include <QFile>
 
-#include <algorithm>
+#include <botan/mem_ops.h>
 #include <cstring>
-#include <gcrypt.h>
-#include <sodium.h>
 
 QUuid FileKey::UUID("a584cbc4-c9b4-437e-81bb-362ca9709273");
 
@@ -35,16 +33,8 @@ constexpr int FileKey::SHA256_SIZE;
 
 FileKey::FileKey()
     : Key(UUID)
-    , m_key(static_cast<char*>(gcry_malloc_secure(SHA256_SIZE)))
+    , m_key(SHA256_SIZE)
 {
-}
-
-FileKey::~FileKey()
-{
-    if (m_key) {
-        gcry_free(m_key);
-        m_key = nullptr;
-    }
 }
 
 /**
@@ -169,10 +159,7 @@ bool FileKey::load(const QString& fileName, QString* errorMsg)
  */
 QByteArray FileKey::rawKey() const
 {
-    if (!m_key) {
-        return {};
-    }
-    return QByteArray::fromRawData(m_key, SHA256_SIZE);
+    return QByteArray(m_key.data(), m_key.size());
 }
 
 /**
@@ -225,7 +212,7 @@ void FileKey::createXMLv2(QIODevice* device, int size)
         }
         w.writeCharacters(QChar(key[i]));
     }
-    sodium_memzero(key.data(), static_cast<std::size_t>(key.capacity()));
+    Botan::secure_scrub_memory(key.data(), static_cast<std::size_t>(key.capacity()));
     w.writeCharacters("\n        ");
 
     w.writeEndElement();
@@ -338,7 +325,7 @@ bool FileKey::loadXml(QIODevice* device, QString* errorMsg)
                         return false;
                     }
 
-                    sodium_memzero(rawData.data(), static_cast<std::size_t>(rawData.capacity()));
+                    Botan::secure_scrub_memory(rawData.data(), static_cast<std::size_t>(rawData.capacity()));
                 }
             }
         }
@@ -346,11 +333,11 @@ bool FileKey::loadXml(QIODevice* device, QString* errorMsg)
 
     bool ok = false;
     if (!xmlReader.error() && !keyFileData.data.isEmpty()) {
-        std::memcpy(m_key, keyFileData.data.data(), std::min(SHA256_SIZE, keyFileData.data.size()));
+        std::memcpy(m_key.data(), keyFileData.data.data(), std::min(SHA256_SIZE, keyFileData.data.size()));
         ok = true;
     }
 
-    sodium_memzero(keyFileData.data.data(), static_cast<std::size_t>(keyFileData.data.capacity()));
+    Botan::secure_scrub_memory(keyFileData.data.data(), static_cast<std::size_t>(keyFileData.data.capacity()));
 
     return ok;
 }
@@ -373,8 +360,8 @@ bool FileKey::loadBinary(QIODevice* device)
         return false;
     }
 
-    std::memcpy(m_key, data.data(), std::min(SHA256_SIZE, data.size()));
-    sodium_memzero(data.data(), static_cast<std::size_t>(data.capacity()));
+    std::memcpy(m_key.data(), data.data(), std::min(SHA256_SIZE, data.size()));
+    Botan::secure_scrub_memory(data.data(), static_cast<std::size_t>(data.capacity()));
     m_type = FixedBinary;
     return true;
 }
@@ -402,14 +389,14 @@ bool FileKey::loadHex(QIODevice* device)
     }
 
     QByteArray key = QByteArray::fromHex(data);
-    sodium_memzero(data.data(), static_cast<std::size_t>(data.capacity()));
+    Botan::secure_scrub_memory(data.data(), static_cast<std::size_t>(data.capacity()));
 
     if (key.size() != 32) {
         return false;
     }
 
-    std::memcpy(m_key, key.data(), std::min(SHA256_SIZE, key.size()));
-    sodium_memzero(key.data(), static_cast<std::size_t>(key.capacity()));
+    std::memcpy(m_key.data(), key.data(), std::min(SHA256_SIZE, key.size()));
+    Botan::secure_scrub_memory(key.data(), static_cast<std::size_t>(key.capacity()));
 
     m_type = FixedBinaryHex;
     return true;
@@ -434,8 +421,8 @@ bool FileKey::loadHashed(QIODevice* device)
     } while (!buffer.isEmpty());
 
     auto result = cryptoHash.result();
-    std::memcpy(m_key, result.data(), std::min(SHA256_SIZE, result.size()));
-    sodium_memzero(result.data(), static_cast<std::size_t>(result.capacity()));
+    std::memcpy(m_key.data(), result.data(), std::min(SHA256_SIZE, result.size()));
+    Botan::secure_scrub_memory(result.data(), static_cast<std::size_t>(result.capacity()));
 
     m_type = Hashed;
     return true;
