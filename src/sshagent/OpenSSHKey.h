@@ -41,7 +41,6 @@ public:
     const QString fingerprint(QCryptographicHash::Algorithm algo = QCryptographicHash::Sha256) const;
     const QString comment() const;
     const QString publicKey() const;
-    const QString privateKey() const;
     const QString errorString() const;
 
     void setType(const QString& type);
@@ -56,19 +55,9 @@ public:
     bool writePublic(BinaryStream& stream);
     bool writePrivate(BinaryStream& stream);
 
-    QList<QByteArray> publicParts() const;
-    QList<QByteArray> privateParts() const;
-
     static const QString TYPE_DSA_PRIVATE;
     static const QString TYPE_RSA_PRIVATE;
-    static const QString TYPE_RSA_PUBLIC;
     static const QString TYPE_OPENSSH_PRIVATE;
-
-    enum Type
-    {
-        Public,
-        Private
-    };
 
 private:
     bool extractPEM(const QByteArray& in, QByteArray& out);

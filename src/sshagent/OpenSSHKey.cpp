@@ -31,7 +31,6 @@
 
 const QString OpenSSHKey::TYPE_DSA_PRIVATE = "DSA PRIVATE KEY";
 const QString OpenSSHKey::TYPE_RSA_PRIVATE = "RSA PRIVATE KEY";
-const QString OpenSSHKey::TYPE_RSA_PUBLIC = "RSA PUBLIC KEY";
 const QString OpenSSHKey::TYPE_OPENSSH_PRIVATE = "OPENSSH PRIVATE KEY";
 
 OpenSSHKey::OpenSSHKey(QObject* parent)
@@ -114,24 +113,6 @@ const QString OpenSSHKey::fingerprint(QCryptographicHash::Algorithm algo) const
 const QString OpenSSHKey::comment() const
 {
     return m_comment;
-}
-
-const QString OpenSSHKey::privateKey() const
-{
-    if (m_rawPrivateData.isEmpty()) {
-        return {};
-    }
-
-    QByteArray privateKey;
-    BinaryStream stream(&privateKey);
-
-    stream.writeString(m_type);
-
-    for (QByteArray ba : m_rawPrivateData) {
-        stream.writeString(ba);
-    }
-
-    return m_type + " " + QString::fromLatin1(privateKey.toBase64()) + " " + m_comment;
 }
 
 const QString OpenSSHKey::publicKey() const
@@ -253,7 +234,7 @@ bool OpenSSHKey::parsePKCS1PEM(const QByteArray& in)
         return false;
     }
 
-    if (m_rawType == TYPE_DSA_PRIVATE || m_rawType == TYPE_RSA_PRIVATE || m_rawType == TYPE_RSA_PUBLIC) {
+    if (m_rawType == TYPE_DSA_PRIVATE || m_rawType == TYPE_RSA_PRIVATE) {
         m_rawData = data;
     } else if (m_rawType == TYPE_OPENSSH_PRIVATE) {
         BinaryStream stream(&data);
@@ -429,13 +410,7 @@ bool OpenSSHKey::openKey(const QString& passphrase)
 
         return true;
     } else if (m_rawType == TYPE_RSA_PRIVATE) {
-        if (!ASN1Key::parsePrivateRSA(rawData, *this)) {
-            m_error = tr("Decryption failed, wrong passphrase?");
-            return false;
-        }
-        return true;
-    } else if (m_rawType == TYPE_RSA_PUBLIC) {
-        if (!ASN1Key::parsePublicRSA(rawData, *this)) {
+        if (!ASN1Key::parseRSA(rawData, *this)) {
             m_error = tr("Decryption failed, wrong passphrase?");
             return false;
         }
@@ -587,16 +562,6 @@ bool OpenSSHKey::writePrivate(BinaryStream& stream)
     }
 
     return true;
-}
-
-QList<QByteArray> OpenSSHKey::publicParts() const
-{
-    return m_rawPublicData;
-}
-
-QList<QByteArray> OpenSSHKey::privateParts() const
-{
-    return m_rawPrivateData;
 }
 
 uint qHash(const OpenSSHKey& key)

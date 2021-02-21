@@ -53,16 +53,6 @@ namespace
         return true;
     }
 
-    bool parsePublicHeader(BinaryStream& stream)
-    {
-        quint8 tag;
-        quint32 len;
-
-        nextTag(stream, tag, len);
-
-        return (tag == TAG_SEQUENCE);
-    }
-
     bool parsePrivateHeader(BinaryStream& stream, quint8 wantedType)
     {
         quint8 tag;
@@ -138,35 +128,7 @@ bool ASN1Key::parseDSA(QByteArray& ba, OpenSSHKey& key)
     return true;
 }
 
-bool ASN1Key::parsePublicRSA(QByteArray& ba, OpenSSHKey& key)
-{
-    BinaryStream stream(&ba);
-
-    if (!parsePublicHeader(stream)) {
-        return false;
-    }
-
-    QByteArray n, e;
-    readInt(stream, n);
-    readInt(stream, e);
-
-    // Note: To properly calculate the key fingerprint, e and n are reversed per RFC 4253
-    QList<QByteArray> publicData;
-    publicData.append(e);
-    publicData.append(n);
-
-    QList<QByteArray> privateData;
-    privateData.append(n);
-    privateData.append(e);
-
-    key.setType("ssh-rsa");
-    key.setPublicData(publicData);
-    key.setPrivateData(privateData);
-    key.setComment("");
-    return true;
-}
-
-bool ASN1Key::parsePrivateRSA(QByteArray& ba, OpenSSHKey& key)
+bool ASN1Key::parseRSA(QByteArray& ba, OpenSSHKey& key)
 {
     BinaryStream stream(&ba);
 
