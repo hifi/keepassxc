@@ -22,6 +22,7 @@
 #include "BinaryStream.h"
 #include "core/Tools.h"
 #include "crypto/SymmetricCipher.h"
+#include "crypto/Random.h"
 
 #include <QCryptographicHash>
 #include <QRegularExpression>
@@ -35,6 +36,7 @@ const QString OpenSSHKey::TYPE_OPENSSH_PRIVATE = "OPENSSH PRIVATE KEY";
 
 OpenSSHKey::OpenSSHKey(QObject* parent)
     : QObject(parent)
+    , m_check(0)
     , m_type(QString())
     , m_cipherName(QString("none"))
     , m_kdfName(QString("none"))
@@ -50,6 +52,7 @@ OpenSSHKey::OpenSSHKey(QObject* parent)
 
 OpenSSHKey::OpenSSHKey(const OpenSSHKey& other)
     : QObject(nullptr)
+    , m_check(other.m_check)
     , m_type(other.m_type)
     , m_cipherName(other.m_cipherName)
     , m_kdfName(other.m_kdfName)
@@ -125,6 +128,68 @@ const QString OpenSSHKey::publicKey() const
     stream.write(m_rawPublicData);
 
     return m_type + " " + QString::fromLatin1(publicKey.toBase64()) + " " + m_comment;
+}
+
+const QString OpenSSHKey::privateKey()
+{
+    QByteArray sshKey;
+    BinaryStream stream(&sshKey);
+
+    // magic
+    stream.write(QString("openssh-key-v1").toUtf8());
+    stream.write(static_cast<quint8>(0));
+
+    // cipher name
+    stream.writeString(QString("none"));
+
+    // kdf name
+    stream.writeString(QString("none"));
+
+    // kdf options
+    stream.writeString(QString(""));
+
+    // number of keys
+    stream.write(static_cast<quint32>(1));
+
+    // string wrapped public key
+    QByteArray publicKey;
+    BinaryStream publicStream(&publicKey);
+    writePublic(publicStream);
+    stream.writeString(publicKey);
+
+    // string wrapper private key
+    QByteArray privateKey;
+    BinaryStream privateStream(&privateKey);
+
+    // integrity check value
+    if (m_check == 0) {
+        m_check = randomGen()->randomUInt(std::numeric_limits<quint32>::max() - 1) + 1;
+    }
+
+    privateStream.write(m_check);
+    privateStream.write(m_check);
+
+    writePrivate(privateStream);
+
+    // padding for unencrypted key
+    for (quint8 i = 1; i <= privateKey.size() % 8; i++) {
+        privateStream.write(i);
+    }
+
+    stream.writeString(privateKey);
+
+    // encode to PEM format
+    QString out;
+    out += "-----BEGIN OPENSSH PRIVATE KEY-----\n";
+
+    auto base64Key = QString::fromUtf8(sshKey.toBase64());
+    for (int i = 0; i < base64Key.size(); i += 70) {
+        out += base64Key.midRef(i, 70);
+        out += "\n";
+    }
+
+    out += "-----END OPENSSH PRIVATE KEY-----\n";
+    return out;
 }
 
 const QString OpenSSHKey::errorString() const
@@ -422,6 +487,8 @@ bool OpenSSHKey::openKey(const QString& passphrase)
             m_error = tr("Decryption failed, wrong passphrase?");
             return false;
         }
+
+        m_check = checkInt1;
 
         return readPrivate(keyStream);
     }

@@ -35,6 +35,9 @@ private slots:
     void testRemoveOnClose();
     void testLifetimeConstraint();
     void testConfirmConstraint();
+    void testKeyGenRSA();
+    void testKeyGenECDSA();
+    void testKeyGenEd25519();
     void cleanupTestCase();
 
 private:
