@@ -9,6 +9,7 @@ if(WITH_XC_SSHAGENT)
         KeeAgentSettings.cpp
         OpenSSHKey.cpp
         SSHAgent.cpp
+        KeyGenerator.cpp
     )
 
     add_library(sshagent STATIC ${sshagent_SOURCES})

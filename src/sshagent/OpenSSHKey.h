@@ -41,6 +41,7 @@ public:
     const QString fingerprint(QCryptographicHash::Algorithm algo = QCryptographicHash::Sha256) const;
     const QString comment() const;
     const QString publicKey() const;
+    const QString privateKey();
     const QString errorString() const;
 
     void setType(const QString& type);

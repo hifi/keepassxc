@@ -49,6 +49,7 @@
 #include "sshagent/KeeAgentSettings.h"
 #include "sshagent/OpenSSHKey.h"
 #include "sshagent/SSHAgent.h"
+#include "sshagent/KeyGenerator.h"
 #endif
 #ifdef WITH_XC_BROWSER
 #include "EntryURLModel.h"
@@ -541,6 +542,7 @@ void EditEntryWidget::setupSSHAgent()
     connect(m_sshAgentUi->removeFromAgentButton, SIGNAL(clicked()), SLOT(removeKeyFromAgent()));
     connect(m_sshAgentUi->decryptButton, SIGNAL(clicked()), SLOT(decryptPrivateKey()));
     connect(m_sshAgentUi->copyToClipboardButton, SIGNAL(clicked()), SLOT(copyPublicKey()));
+    connect(m_sshAgentUi->generateButton, SIGNAL(clicked()), SLOT(generatePrivateKey()));
 
     connect(m_advancedUi->attachmentsWidget->entryAttachments(),
             SIGNAL(entryAttachmentsModified()),
@@ -768,6 +770,14 @@ void EditEntryWidget::decryptPrivateKey()
 void EditEntryWidget::copyPublicKey()
 {
     clipboard()->setText(m_sshAgentUi->publicKeyEdit->document()->toPlainText());
+}
+
+void EditEntryWidget::generatePrivateKey()
+{
+    OpenSSHKey key = KeyGenerator::generateRSAKey(2048);
+    qDebug() << key.fingerprint();
+    qDebug() << key.publicKey();
+    printf("%s\n", key.privateKey().toStdString().c_str());
 }
 #endif
 

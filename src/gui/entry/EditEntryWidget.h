@@ -123,6 +123,7 @@ private slots:
     void removeKeyFromAgent();
     void decryptPrivateKey();
     void copyPublicKey();
+    void generatePrivateKey();
 #endif
 #ifdef WITH_XC_BROWSER
     void updateBrowserModified();
