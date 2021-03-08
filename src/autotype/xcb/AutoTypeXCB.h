@@ -70,8 +70,7 @@ private:
     int AddKeysym(KeySym keysym);
     void SendKeyEvent(unsigned keycode, bool press);
     void SendModifiers(unsigned int mask, bool press);
-    int GetKeycode(KeySym keysym, unsigned int* mask);
-    bool keysymModifiers(KeySym keysym, int keycode, unsigned int* mask);
+    bool GetKeycode(KeySym keysym, int* keycode, int* group, unsigned int* mask);
 
     static int MyErrorHandler(Display* my_dpy, XErrorEvent* event);
 

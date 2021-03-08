@@ -16,7 +16,6 @@
  */
 
 #include "NixUtils.h"
-#include "KeySymMap.h"
 #include "core/Tools.h"
 
 #include <QApplication>

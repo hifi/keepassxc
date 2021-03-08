@@ -435,43 +435,53 @@ void AutoTypePlatformX11::SendModifiers(unsigned int mask, bool press)
  * Determines the keycode and modifier mask for the given
  * keysym.
  */
-int AutoTypePlatformX11::GetKeycode(KeySym keysym, unsigned int* mask)
+bool AutoTypePlatformX11::GetKeycode(KeySym keysym, int* keycode, int* group, unsigned int* mask)
 {
-    int keycode = XKeysymToKeycode(m_dpy, keysym);
+    int min_keycodes, max_keycodes;
+    XDisplayKeycodes(m_dpy, &min_keycodes, &max_keycodes);
 
-    if (keycode && keysymModifiers(keysym, keycode, mask)) {
-        return keycode;
-    }
+    XkbDescPtr desc = XkbGetMap(m_dpy, XkbAllClientInfoMask, XkbUseCoreKbd);
 
-    /* no modifier matches => resort to remapping */
-    keycode = AddKeysym(keysym);
-    if (keycode && keysymModifiers(keysym, keycode, mask)) {
-        return keycode;
-    }
-
+    *keycode = 0;
+    *group = 0;
     *mask = 0;
-    return 0;
-}
 
-bool AutoTypePlatformX11::keysymModifiers(KeySym keysym, int keycode, unsigned int* mask)
-{
-    int shift, mod;
-    unsigned int mods_rtrn;
+    for (int ckeycode = min_keycodes; ckeycode < max_keycodes; ckeycode++) {
+        int groups = XkbKeyNumGroups(desc, ckeycode);
 
-    /* determine whether there is a combination of the modifiers
-       (Mod1-Mod5) with or without shift which returns keysym */
-    for (shift = 0; shift < 2; shift++) {
-        for (mod = ControlMapIndex; mod <= Mod5MapIndex; mod++) {
-            KeySym keysym_rtrn;
-            *mask = (mod == ControlMapIndex) ? shift : shift | (1 << mod);
-            XkbTranslateKeyCode(m_xkb, keycode, *mask, &mods_rtrn, &keysym_rtrn);
-            if (keysym_rtrn == keysym) {
-                return true;
+        for (int cgroup = 0; cgroup < groups; cgroup++) {
+            XkbKeyTypePtr type = XkbKeyKeyType(desc, ckeycode, cgroup);
+
+            for (int clevel = 0; clevel < type->num_levels; clevel++) {
+                if (XkbKeycodeToKeysym(m_dpy, ckeycode, cgroup, clevel) == keysym) {
+                    // found the correct keycode for keysym
+                    *keycode = ckeycode;
+                    *group = cgroup;
+
+                    // check if we have a mask
+                    for (int nmap = 0; nmap < type->map_count; nmap++) {
+                        XkbKTMapEntryRec map = type->map[nmap];
+                        if (map.active && map.level == clevel) {
+                            *mask = map.mods.mask;
+                            break;
+                        }
+                    }
+
+                    goto out;
+                }
             }
         }
     }
 
-    return false;
+out:
+    XkbFreeClientMap(desc, 0, 1);
+
+    /* no modifier matches => resort to remapping */
+    if (!*keycode) {
+        *keycode = AddKeysym(keysym);
+    }
+
+    return (*keycode != 0);
 }
 
 /*
@@ -487,14 +497,15 @@ void AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
     }
 
     int keycode;
+    int group;
     unsigned int wanted_mask;
 
-    /* determine keycode and mask for the given keysym */
-    keycode = GetKeycode(keysym, &wanted_mask);
-    if (keycode < 8 || keycode > 255) {
+    /* determine keycode, group and mask for the given keysym */
+    if (!GetKeycode(keysym, &keycode, &group, &wanted_mask)) {
         qWarning("Unable to get valid keycode for key: keysym=0x%lX", keysym);
         return;
     }
+
     wanted_mask |= modifiers;
 
     Window root, child;
@@ -541,6 +552,14 @@ void AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
         release_mask = release_check_mask;
     }
 
+    /* change layout group if necessary */
+    XkbStateRec state;
+    XkbGetState(m_dpy, XkbUseCoreKbd, &state);
+    int old_group = state.group;
+    if (old_group != group) {
+        XkbLockGroup(m_dpy, XkbUseCoreKbd, group);
+    }
+
     /* set modifiers mask */
     if ((release_mask | press_mask) & LockMask) {
         SendModifiers(LockMask, true);
@@ -559,6 +578,11 @@ void AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
     if ((release_mask | press_mask) & LockMask) {
         SendModifiers(LockMask, true);
         SendModifiers(LockMask, false);
+    }
+
+    /* reset layout group if necessary */
+    if (old_group != group) {
+        XkbLockGroup(m_dpy, XkbUseCoreKbd, old_group);
     }
 }
 
