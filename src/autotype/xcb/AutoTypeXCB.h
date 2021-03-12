@@ -56,6 +56,8 @@ public:
     AutoTypeExecutor* createExecutor() override;
 
     void sendKey(KeySym keysym, unsigned int modifiers = 0);
+    QMap<int, QMap<KeySym, QPair<int, int>>>* GetKeymap() { return &m_keymap; };
+    void SetGroup(int group) { m_group = group; }
 
 private:
     QString windowTitle(Window window, bool useBlacklist);
@@ -96,6 +98,10 @@ private:
     KeySym m_currentRemapKeysym;
     KeyCode m_modifier_keycode[N_MOD_INDICES];
     bool m_loaded;
+
+    // group: keysym: keycode, mask
+    QMap<int, QMap<KeySym, QPair<int, int>>> m_keymap;
+    int m_group;
 };
 
 class AutoTypeExecutorX11 : public AutoTypeExecutor
@@ -103,7 +109,9 @@ class AutoTypeExecutorX11 : public AutoTypeExecutor
 public:
     explicit AutoTypeExecutorX11(AutoTypePlatformX11* platform);
 
+    void execPrepare(const QList<QSharedPointer<AutoTypeAction>>& actions) override;
     void execType(const AutoTypeKey* action) override;
+    void execEnd() override;
     void execClearField(const AutoTypeClearField* action) override;
 
 private:

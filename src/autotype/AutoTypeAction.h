@@ -20,6 +20,8 @@
 #define KEEPASSX_AUTOTYPEACTION_H
 
 #include <QChar>
+#include <QList>
+#include <QSharedPointer>
 
 #include "core/Global.h"
 
@@ -65,7 +67,9 @@ class KEEPASSXC_EXPORT AutoTypeExecutor
 {
 public:
     virtual ~AutoTypeExecutor() = default;
+    virtual void execPrepare(const QList<QSharedPointer<AutoTypeAction>>& actions) = 0;
     virtual void execType(const AutoTypeKey* action) = 0;
+    virtual void execEnd() = 0;
     virtual void execClearField(const AutoTypeClearField* action) = 0;
 
     int execDelayMs = 25;

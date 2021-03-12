@@ -296,6 +296,8 @@ void AutoType::executeAutoTypeActions(const Entry* entry, QWidget* hideWindow, c
 
     Tools::wait(qMax(100, config()->get(Config::AutoTypeStartDelay).toInt()));
 
+    m_executor->execPrepare(asConst(actions));
+
     for (const auto& action : asConst(actions)) {
         if (m_plugin->activeWindow() != window) {
             qWarning("Active window changed, interrupting auto-type.");

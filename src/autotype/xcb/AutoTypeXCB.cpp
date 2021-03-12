@@ -301,6 +301,7 @@ bool AutoTypePlatformX11::isTopLevelWindow(Window window)
  */
 void AutoTypePlatformX11::updateKeymap()
 {
+    qDebug() << "updateKeymap";
     if (m_xkb) {
         XkbFreeKeyboard(m_xkb, XkbAllComponentsMask, True);
     }
@@ -437,6 +438,14 @@ void AutoTypePlatformX11::SendModifiers(unsigned int mask, bool press)
  */
 bool AutoTypePlatformX11::GetKeycode(KeySym keysym, int* keycode, int* group, unsigned int* mask)
 {
+    const QPair<int, int>& pair = m_keymap[m_group][keysym];
+
+    *group = m_group;
+    *keycode = pair.first;
+    *mask = pair.second;
+
+    return true;
+#if 0
     int min_keycodes, max_keycodes;
     XDisplayKeycodes(m_dpy, &min_keycodes, &max_keycodes);
 
@@ -482,6 +491,7 @@ out:
     }
 
     return (*keycode != 0);
+#endif
 }
 
 /*
@@ -603,6 +613,105 @@ AutoTypeExecutorX11::AutoTypeExecutorX11(AutoTypePlatformX11* platform)
 {
 }
 
+void AutoTypeExecutorX11::execPrepare(const QList<QSharedPointer<AutoTypeAction>>& actions)
+{
+    int min_keycodes, max_keycodes;
+    qDebug() << "execPrepare";
+    auto& keymap = *m_platform->GetKeymap();
+    keymap.clear();
+    qDebug() << "cleared";
+
+    Display *dpy = QX11Info::display();
+    XDisplayKeycodes(dpy, &min_keycodes, &max_keycodes);
+
+    XkbDescPtr desc = XkbGetMap(dpy, XkbAllClientInfoMask, XkbUseCoreKbd);
+
+    for (int ckeycode = min_keycodes; ckeycode < max_keycodes; ckeycode++) {
+        int groups = XkbKeyNumGroups(desc, ckeycode);
+
+
+        for (int cgroup = 0; cgroup < groups; cgroup++) {
+
+            if (!keymap.contains(cgroup)) {
+                qDebug() << "creating group" << cgroup;
+                QMap<KeySym, QPair<int, int>> keysyms;
+                keymap.insert(cgroup, keysyms);
+            }
+
+            XkbKeyTypePtr type = XkbKeyKeyType(desc, ckeycode, cgroup);
+
+
+            for (int clevel = 0; clevel < type->num_levels; clevel++) {
+                KeySym sym = XkbKeycodeToKeysym(dpy, ckeycode, cgroup, clevel);
+
+                int mask = 0;
+                for (int nmap = 0; nmap < type->map_count; nmap++) {
+                    XkbKTMapEntryRec map = type->map[nmap];
+                    if (map.active) {
+                        mask = map.mods.mask;
+                        break;
+                    }
+                }
+
+                keymap[cgroup].insert(sym, qMakePair(ckeycode, mask));
+            }
+        }
+    }
+
+    XkbFreeClientMap(desc, 0, 1);
+    qDebug() << "built keymap";
+
+    // keymap is updated, check if current keymap can perform all actions
+    XkbStateRec state;
+    XkbGetState(dpy, XkbUseCoreKbd, &state);
+
+    // list of keysyms that we need to send
+    QList<KeySym> keysyms;
+
+    qDebug() << "building action->keysym list";
+    for (const auto& aaction : actions) {
+        AutoTypeKey* action = reinterpret_cast<AutoTypeKey*>(aaction.data());
+        qDebug() << action;
+        if (action) {
+            if (action->key != Qt::Key_unknown) {
+                keysyms.append(qtToNativeKeyCode(action->key));
+            } else {
+                keysyms.append(qcharToNativeKeyCode(action->character));
+            }
+        }
+    }
+
+    m_platform->SetGroup(state.group);
+    // init groups with current group as the first one
+    QList<int> groups {state.group};
+
+    // add all non-current groups to search list
+    for (auto group : keymap.keys()) {
+        if (!groups.contains(group)) {
+            groups.append(group);
+        }
+    }
+
+    // check the keysym list against groups, pick the first having all keysyms
+    for (auto group : groups) {
+        qDebug() << "searching group" << group;
+        // expect to find all keysyms, fail fast if not
+        bool found = true;
+        for (auto keysym : keysyms) {
+            if (!keymap[group].contains(keysym)) {
+                found = false;
+                break;
+            }
+        }
+
+        if (found) {
+            m_platform->SetGroup(group);
+            qDebug() << "group found" << group;
+            break;
+        }
+    }
+}
+
 void AutoTypeExecutorX11::execType(const AutoTypeKey* action)
 {
     if (action->key != Qt::Key_unknown) {
@@ -612,6 +721,10 @@ void AutoTypeExecutorX11::execType(const AutoTypeKey* action)
     }
 
     Tools::sleep(execDelayMs);
+}
+
+void AutoTypeExecutorX11::execEnd()
+{
 }
 
 void AutoTypeExecutorX11::execClearField(const AutoTypeClearField* action)
