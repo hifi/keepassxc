@@ -436,7 +436,7 @@ bool AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
     XQueryPointer(m_dpy, m_rootWindow, &root, &child, &root_x, &root_y, &x, &y, &original_mask);
 
     /* abort if any keysym affecting modifier is held except Num Lock */
-    if (original_mask & (ShiftMask | LockMask | ControlMask | Mod1Mask | Mod4Mask)) {
+    if (original_mask & (ShiftMask | LockMask | ControlMask | Mod1Mask | Mod4Mask | Mod5Mask)) {
         m_error = tr("Keys were held down by the user during sequence.");
         return false;
     }
