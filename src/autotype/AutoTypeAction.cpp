@@ -32,9 +32,9 @@ AutoTypeKey::AutoTypeKey(const QChar& character, Qt::KeyboardModifiers modifiers
 {
 }
 
-void AutoTypeKey::exec(AutoTypeExecutor* executor) const
+bool AutoTypeKey::exec(AutoTypeExecutor* executor)
 {
-    executor->execType(this);
+    return executor->execType(this);
 }
 
 AutoTypeDelay::AutoTypeDelay(int delayMs, bool setExecDelay)
@@ -43,7 +43,7 @@ AutoTypeDelay::AutoTypeDelay(int delayMs, bool setExecDelay)
 {
 }
 
-void AutoTypeDelay::exec(AutoTypeExecutor* executor) const
+bool AutoTypeDelay::exec(AutoTypeExecutor* executor)
 {
     if (setExecDelay) {
         // Change the delay between actions
@@ -52,14 +52,16 @@ void AutoTypeDelay::exec(AutoTypeExecutor* executor) const
         // Pause execution
         Tools::wait(delayMs);
     }
+
+    return true;
 }
 
-void AutoTypeClearField::exec(AutoTypeExecutor* executor) const
+bool AutoTypeClearField::exec(AutoTypeExecutor* executor)
 {
-    executor->execClearField(this);
+    return executor->execClearField(this);
 }
 
-void AutoTypeBegin::exec(AutoTypeExecutor* executor) const
+bool AutoTypeBegin::exec(AutoTypeExecutor* executor)
 {
-    executor->execBegin(this);
+    return executor->execBegin(this);
 }

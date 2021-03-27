@@ -56,7 +56,8 @@ public:
     AutoTypeExecutor* createExecutor() override;
     void updateKeymap();
 
-    void sendKey(KeySym keysym, unsigned int modifiers = 0);
+    bool sendKey(KeySym keysym, unsigned int modifiers = 0);
+    const QString errorString() const { return m_error; };
 
 private:
     QString windowTitle(Window window, bool useBlacklist);
@@ -97,6 +98,7 @@ private:
     QList<KeyDesc> m_keymap;
     KeyCode m_modifier_keycode[N_MOD_INDICES];
     bool m_loaded;
+    QString m_error;
 };
 
 class AutoTypeExecutorX11 : public AutoTypeExecutor
@@ -104,9 +106,9 @@ class AutoTypeExecutorX11 : public AutoTypeExecutor
 public:
     explicit AutoTypeExecutorX11(AutoTypePlatformX11* platform);
 
-    void execBegin(const AutoTypeBegin* action) override;
-    void execType(const AutoTypeKey* action) override;
-    void execClearField(const AutoTypeClearField* action) override;
+    bool execBegin(const AutoTypeBegin* action) override;
+    bool execType(const AutoTypeKey* action) override;
+    bool execClearField(const AutoTypeClearField* action) override;
 
 private:
     AutoTypePlatformX11* const m_platform;

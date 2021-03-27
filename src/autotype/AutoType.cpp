@@ -294,7 +294,8 @@ void AutoType::executeAutoTypeActions(const Entry* entry, QWidget* hideWindow, c
         window = m_plugin->activeWindow();
     }
 
-    Tools::wait(qMax(100, config()->get(Config::AutoTypeStartDelay).toInt()));
+    int delay = qMax(100, config()->get(Config::AutoTypeStartDelay).toInt());
+    Tools::wait(delay);
 
     for (const auto& action : asConst(actions)) {
         if (m_plugin->activeWindow() != window) {
@@ -304,7 +305,22 @@ void AutoType::executeAutoTypeActions(const Entry* entry, QWidget* hideWindow, c
             return;
         }
 
-        action->exec(m_executor);
+        bool success = false;
+        for (int i = 0; i < 5; i++) {
+            if ((success = action->exec(m_executor))) {
+                break;
+            }
+
+            Tools::wait(delay);
+        }
+
+        if (!success) {
+            MessageBox::critical(getMainWindow(), tr("Auto-Type Error"), m_executor->error);
+            emit autotypeRejected();
+            m_inAutoType.unlock();
+            return;
+        }
+
         QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
     }
 

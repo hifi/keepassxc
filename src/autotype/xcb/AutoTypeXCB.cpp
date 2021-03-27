@@ -400,11 +400,11 @@ bool AutoTypePlatformX11::GetKeycode(KeySym keysym, int* keycode, int* group, un
  * window to simulate keyboard.  If modifiers (shift, control, etc)
  * are set ON, many events will be sent.
  */
-void AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
+bool AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
 {
     if (keysym == NoSymbol) {
-        qWarning("No such key: keysym=0x%lX", keysym);
-        return;
+        m_error = tr("Trying to send invalid keysym.");
+        return false;
     }
 
     int keycode;
@@ -422,8 +422,8 @@ void AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
 
     /* determine keycode, group and mask for the given keysym */
     if (!GetKeycode(keysym, &keycode, &group, &wanted_mask)) {
-        qWarning("Unable to get valid keycode for key: keysym=0x%lX", keysym);
-        return;
+        m_error = tr("Unable to get valid keycode for key: ") + QString(XKeysymToString(keysym));
+        return false;
     }
 
     wanted_mask |= modifiers;
@@ -437,8 +437,8 @@ void AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
 
     /* abort if any keysym affecting modifier is held except Num Lock */
     if (original_mask & (ShiftMask | LockMask | ControlMask | Mod1Mask | Mod4Mask)) {
-        qWarning("Modifiers held by user, aborting.");
-        return;
+        m_error = tr("Keys were held down by the user during sequence.");
+        return false;
     }
 
     /* modifiers that need to be held but aren't */
@@ -463,6 +463,8 @@ void AutoTypePlatformX11::sendKey(KeySym keysym, unsigned int modifiers)
         XkbLockGroup(m_dpy, XkbUseCoreKbd, group_active);
         XFlush(m_dpy);
     }
+
+    return true;
 }
 
 int AutoTypePlatformX11::MyErrorHandler(Display* my_dpy, XErrorEvent* event)
@@ -482,29 +484,39 @@ AutoTypeExecutorX11::AutoTypeExecutorX11(AutoTypePlatformX11* platform)
 {
 }
 
-void AutoTypeExecutorX11::execBegin(const AutoTypeBegin* action)
+bool AutoTypeExecutorX11::execBegin(const AutoTypeBegin* action)
 {
     Q_UNUSED(action);
     m_platform->updateKeymap();
+    return true;
 }
 
-void AutoTypeExecutorX11::execType(const AutoTypeKey* action)
+bool AutoTypeExecutorX11::execType(const AutoTypeKey* action)
 {
+    bool ret;
+
     if (action->key != Qt::Key_unknown) {
-        m_platform->sendKey(qtToNativeKeyCode(action->key), qtToNativeModifiers(action->modifiers));
+        ret = m_platform->sendKey(qtToNativeKeyCode(action->key), qtToNativeModifiers(action->modifiers));
     } else {
-        m_platform->sendKey(qcharToNativeKeyCode(action->character), qtToNativeModifiers(action->modifiers));
+        ret = m_platform->sendKey(qcharToNativeKeyCode(action->character), qtToNativeModifiers(action->modifiers));
     }
 
-    Tools::sleep(execDelayMs);
+    if (ret) {
+        Tools::sleep(execDelayMs);
+    } else {
+        error = m_platform->errorString();
+    }
+
+    return ret;
 }
 
-void AutoTypeExecutorX11::execClearField(const AutoTypeClearField* action)
+bool AutoTypeExecutorX11::execClearField(const AutoTypeClearField* action)
 {
     Q_UNUSED(action);
     execType(new AutoTypeKey(Qt::Key_Home, Qt::ControlModifier));
     execType(new AutoTypeKey(Qt::Key_End, Qt::ControlModifier | Qt::ShiftModifier));
     execType(new AutoTypeKey(Qt::Key_Backspace));
+    return true;
 }
 
 bool AutoTypePlatformX11::raiseWindow(WId window)
