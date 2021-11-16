@@ -75,7 +75,7 @@ AutoTypeSelectDialog::AutoTypeSelectDialog(QWidget* parent)
             m_ui->search->setFocus();
         } else {
             // Reset to original match list
-            m_ui->view->setMatchList(m_matches, -1, true);
+            m_ui->view->setMatchList(m_matches);
             performSearch();
             m_ui->search->setFocus();
         }
@@ -102,7 +102,12 @@ void AutoTypeSelectDialog::setMatches(const QList<AutoTypeMatch>& matches,
     m_dbs = dbs;
     m_lastMatch = lastMatch;
 
-    m_ui->view->setMatchList(m_matches, -1, !m_matches.isEmpty() || !m_ui->search->text().isEmpty());
+    m_ui->view->setMatchList(m_matches);
+
+    if (!m_matches.isEmpty() || !m_ui->search->text().isEmpty()) {
+        m_ui->view->selectFirstMatch();
+    }
+
     m_ui->searchCheckBox->setChecked(m_matches.isEmpty());
 }
 
@@ -136,7 +141,6 @@ void AutoTypeSelectDialog::performSearch()
 
     EntrySearcher searcher;
     QList<AutoTypeMatch> matches;
-    int selectedIndex = -1;
     for (const auto& db : m_dbs) {
         auto found = searcher.search(searchText, db->rootGroup());
         for (auto* entry : found) {
@@ -146,24 +150,27 @@ void AutoTypeSelectDialog::performSearch()
                 AutoTypeMatch match = {entry, defSequence};
                 matches.append(match);
                 sequences << defSequence;
-                if (match == m_lastMatch || (selectedIndex == -1 && match.first == m_lastMatch.first)) {
-                    selectedIndex = matches.size() - 1;
-                }
             }
             for (const auto& assoc : entry->autoTypeAssociations()->getAll()) {
                 if (!sequences.contains(assoc.sequence) && !assoc.sequence.isEmpty()) {
                     AutoTypeMatch match = {entry, assoc.sequence};
                     matches.append(match);
                     sequences << assoc.sequence;
-                    if (match == m_lastMatch || (selectedIndex == -1 && match.first == m_lastMatch.first)) {
-                        selectedIndex = matches.size() - 1;
-                    }
                 }
             }
         }
     }
 
-    m_ui->view->setMatchList(matches, selectedIndex, !m_ui->search->text().isEmpty());
+    m_ui->view->setMatchList(matches);
+
+    bool selected = false;
+    if (m_lastMatch.first) {
+        selected = m_ui->view->selectMatch(m_lastMatch);
+    }
+
+    if (!selected && !m_ui->search->text().isEmpty()) {
+        m_ui->view->selectFirstMatch();
+    }
 }
 
 void AutoTypeSelectDialog::activateCurrentMatch()

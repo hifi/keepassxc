@@ -78,6 +78,11 @@ void AutoTypeMatchModel::setMatchList(const QList<AutoTypeMatch>& matches)
     endResetModel();
 }
 
+QList<AutoTypeMatch>* AutoTypeMatchModel::matchList()
+{
+    return &m_matches;
+}
+
 int AutoTypeMatchModel::rowCount(const QModelIndex& parent) const
 {
     if (parent.isValid()) {

@@ -426,7 +426,7 @@ void AutoType::performGlobalAutoType(const QList<QSharedPointer<Database>>& dbLi
     }
 
     // Invalidate last match if it's old enough
-    if (m_lastMatch.first != nullptr && QDateTime::currentMSecsSinceEpoch() - m_lastMatchTime > 30000) {
+    if (m_lastMatch.first && (QDateTime::currentMSecsSinceEpoch() - m_lastMatchTime) > 30000) {
         m_lastMatch = {nullptr, QString()};
     }
 
