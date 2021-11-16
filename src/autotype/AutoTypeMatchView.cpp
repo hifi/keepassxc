@@ -78,7 +78,7 @@ void AutoTypeMatchView::keyPressEvent(QKeyEvent* event)
     }
 }
 
-void AutoTypeMatchView::setMatchList(const QList<AutoTypeMatch>& matches, bool selectFirst)
+void AutoTypeMatchView::setMatchList(const QList<AutoTypeMatch>& matches, int selectedIndex, bool selectFirst)
 {
     m_model->setMatchList(matches);
     m_sortModel->setFilterWildcard({});
@@ -87,6 +87,9 @@ void AutoTypeMatchView::setMatchList(const QList<AutoTypeMatch>& matches, bool s
 
     if (selectFirst) {
         selectionModel()->setCurrentIndex(m_sortModel->index(0, 0),
+                                          QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    } else if (selectedIndex > -1) {
+        selectionModel()->setCurrentIndex(m_sortModel->mapFromSource(m_model->index(selectedIndex, 0)),
                                           QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     } else {
         selectionModel()->clear();

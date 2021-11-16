@@ -122,6 +122,8 @@ AutoType::AutoType(QObject* parent, bool test)
     , m_executor(nullptr)
     , m_windowState(WindowState::Normal)
     , m_windowForGlobal(0)
+    , m_lastMatch(nullptr, QString())
+    , m_lastMatchTime(0)
 {
     // prevent crash when the plugin has unresolved symbols
     m_pluginLoader->setLoadHints(QLibrary::ResolveAllSymbolsHint);
@@ -423,6 +425,11 @@ void AutoType::performGlobalAutoType(const QList<QSharedPointer<Database>>& dbLi
         return;
     }
 
+    // Invalidate last match if it's old enough
+    if (m_lastMatch.first != nullptr && QDateTime::currentMSecsSinceEpoch() - m_lastMatchTime > 30000) {
+        m_lastMatch = {nullptr, QString()};
+    }
+
     QList<AutoTypeMatch> matchList;
     bool hideExpired = config()->get(Config::AutoTypeHideExpiredEntry).toBool();
 
@@ -451,7 +458,7 @@ void AutoType::performGlobalAutoType(const QList<QSharedPointer<Database>>& dbLi
         getMainWindow()->closeModalWindow();
 
         auto* selectDialog = new AutoTypeSelectDialog();
-        selectDialog->setMatches(matchList, dbList);
+        selectDialog->setMatches(matchList, dbList, m_lastMatch);
 
         if (!search.isEmpty()) {
             selectDialog->setSearchString(search);
@@ -459,6 +466,8 @@ void AutoType::performGlobalAutoType(const QList<QSharedPointer<Database>>& dbLi
 
         connect(getMainWindow(), &MainWindow::databaseLocked, selectDialog, &AutoTypeSelectDialog::reject);
         connect(selectDialog, &AutoTypeSelectDialog::matchActivated, this, [this](const AutoTypeMatch& match) {
+            m_lastMatch = match;
+            m_lastMatchTime = QDateTime::currentMSecsSinceEpoch();
             executeAutoTypeActions(match.first, nullptr, match.second, m_windowForGlobal);
             resetAutoTypeState();
         });

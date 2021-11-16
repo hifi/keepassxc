@@ -35,7 +35,7 @@ public:
     explicit AutoTypeMatchView(QWidget* parent = nullptr);
     AutoTypeMatch currentMatch();
     AutoTypeMatch matchFromIndex(const QModelIndex& index);
-    void setMatchList(const QList<AutoTypeMatch>& matches, bool selectFirst);
+    void setMatchList(const QList<AutoTypeMatch>& matches, int selectedIndex, bool selectFirst);
     void filterList(const QString& filter);
     void moveSelection(int offset);
 

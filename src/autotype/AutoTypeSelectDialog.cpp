@@ -38,6 +38,7 @@
 AutoTypeSelectDialog::AutoTypeSelectDialog(QWidget* parent)
     : QDialog(parent)
     , m_ui(new Ui::AutoTypeSelectDialog())
+    , m_lastMatch(nullptr, QString())
 {
     setAttribute(Qt::WA_DeleteOnClose);
     // Places the window on the active (virtual) desktop instead of where the main window is.
@@ -74,7 +75,7 @@ AutoTypeSelectDialog::AutoTypeSelectDialog(QWidget* parent)
             m_ui->search->setFocus();
         } else {
             // Reset to original match list
-            m_ui->view->setMatchList(m_matches, true);
+            m_ui->view->setMatchList(m_matches, -1, true);
             performSearch();
             m_ui->search->setFocus();
         }
@@ -93,12 +94,15 @@ AutoTypeSelectDialog::~AutoTypeSelectDialog()
 {
 }
 
-void AutoTypeSelectDialog::setMatches(const QList<AutoTypeMatch>& matches, const QList<QSharedPointer<Database>>& dbs)
+void AutoTypeSelectDialog::setMatches(const QList<AutoTypeMatch>& matches,
+                                      const QList<QSharedPointer<Database>>& dbs,
+                                      const AutoTypeMatch& lastMatch)
 {
     m_matches = matches;
     m_dbs = dbs;
+    m_lastMatch = lastMatch;
 
-    m_ui->view->setMatchList(m_matches, !m_matches.isEmpty() || !m_ui->search->text().isEmpty());
+    m_ui->view->setMatchList(m_matches, -1, !m_matches.isEmpty() || !m_ui->search->text().isEmpty());
     m_ui->searchCheckBox->setChecked(m_matches.isEmpty());
 }
 
@@ -132,25 +136,34 @@ void AutoTypeSelectDialog::performSearch()
 
     EntrySearcher searcher;
     QList<AutoTypeMatch> matches;
+    int selectedIndex = -1;
     for (const auto& db : m_dbs) {
         auto found = searcher.search(searchText, db->rootGroup());
         for (auto* entry : found) {
             QSet<QString> sequences;
             auto defSequence = entry->effectiveAutoTypeSequence();
             if (!defSequence.isEmpty()) {
-                matches.append({entry, defSequence});
+                AutoTypeMatch match = {entry, defSequence};
+                matches.append(match);
                 sequences << defSequence;
+                if (match == m_lastMatch || (selectedIndex == -1 && match.first == m_lastMatch.first)) {
+                    selectedIndex = matches.size() - 1;
+                }
             }
             for (const auto& assoc : entry->autoTypeAssociations()->getAll()) {
                 if (!sequences.contains(assoc.sequence) && !assoc.sequence.isEmpty()) {
-                    matches.append({entry, assoc.sequence});
+                    AutoTypeMatch match = {entry, assoc.sequence};
+                    matches.append(match);
                     sequences << assoc.sequence;
+                    if (match == m_lastMatch || (selectedIndex == -1 && match.first == m_lastMatch.first)) {
+                        selectedIndex = matches.size() - 1;
+                    }
                 }
             }
         }
     }
 
-    m_ui->view->setMatchList(matches, !m_ui->search->text().isEmpty());
+    m_ui->view->setMatchList(matches, selectedIndex, !m_ui->search->text().isEmpty());
 }
 
 void AutoTypeSelectDialog::activateCurrentMatch()
