@@ -17,11 +17,48 @@
  */
 
 #include "Clipboard.h"
+#include "MainWindow.h"
 
 #include <QApplication>
 #include <QClipboard>
 #include <QMimeData>
 #include <QTimer>
+#include <QWidget>
+#include <QDebug>
+
+class WaylandClipboard : public QWidget
+{
+public:
+    WaylandClipboard(const QString& text) : QWidget()
+    {
+        qDebug() << "WaylandClipboard::WaylandClipboard" << text;
+        m_text = text;
+
+        setAttribute(Qt::WA_TranslucentBackground);
+        setWindowFlags(Qt::FramelessWindowHint);
+        setFocusPolicy(Qt::StrongFocus);
+        show();
+
+        QTimer::singleShot(0, this, SLOT(setFocus()));
+        //QTimer::singleShot(2000, this, SLOT(close()));
+        QCoreApplication::processEvents();
+    }
+
+    virtual void focusInEvent(QFocusEvent* ev)
+    {
+        Q_UNUSED(ev);
+
+        qDebug() << "WaylandClipboard::focusInEvent" << m_text;
+        auto* clipboard = QApplication::clipboard();
+        auto* mime = new QMimeData;
+        mime->setText(m_text);
+        clipboard->setMimeData(mime, QClipboard::Clipboard);
+        qDebug() << "WaylandClipboard::focusInEvent copied";
+        //QTimer::singleShot(500, this, SLOT(close()));
+    }
+private:
+    QString m_text;
+};
 
 #include "core/Config.h"
 
@@ -45,12 +82,18 @@ Clipboard::Clipboard(QObject* parent)
 
 void Clipboard::setText(const QString& text, bool clear)
 {
+#if 0
     auto* clipboard = QApplication::clipboard();
     if (!clipboard) {
         qWarning("Unable to access the clipboard.");
         return;
     }
+#endif
+    qDebug() << "Clipboard::setText" << text << clear;
 
+    new WaylandClipboard(text);
+
+#if 0
     auto* mime = new QMimeData;
 #ifdef Q_OS_MACOS
     mime->setText(text);
@@ -69,6 +112,7 @@ void Clipboard::setText(const QString& text, bool clear)
     if (clipboard->supportsSelection()) {
         clipboard->setMimeData(mime, QClipboard::Selection);
     }
+#endif
 #endif
 
     if (clear) {
@@ -89,6 +133,7 @@ void Clipboard::clearCopiedText()
     m_timer->stop();
     emit updateCountdown(-1, "");
 
+#if 0
     auto* clipboard = QApplication::clipboard();
     if (!clipboard) {
         qWarning("Unable to access the clipboard.");
@@ -101,6 +146,9 @@ void Clipboard::clearCopiedText()
     }
 
     m_lastCopied.clear();
+#endif
+
+    setText("clear", false);
 }
 
 void Clipboard::countdownTick()
