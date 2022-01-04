@@ -22,6 +22,7 @@
 
 class Database;
 class Group;
+class Entry;
 
 class GroupModel : public QAbstractItemModel
 {
@@ -32,6 +33,7 @@ public:
     void changeDatabase(Database* newDb);
     QModelIndex index(Group* group) const;
     Group* groupFromIndex(const QModelIndex& index) const;
+    Entry* entryFromIndex(const QModelIndex& index) const;
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     int columnCount(const QModelIndex& parent = QModelIndex()) const override;

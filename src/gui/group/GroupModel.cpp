@@ -18,9 +18,11 @@
 #include "GroupModel.h"
 
 #include <QMimeData>
+#include <QDebug>
 
 #include "core/Database.h"
 #include "core/Group.h"
+#include "core/Entry.h"
 #include "core/Metadata.h"
 #include "core/Tools.h"
 #include "gui/DatabaseIcons.h"
@@ -60,7 +62,10 @@ int GroupModel::rowCount(const QModelIndex& parent) const
         return 1;
     } else {
         const Group* group = groupFromIndex(parent);
-        return group->children().size();
+        if (group) {
+            return group->children().size() + group->entries().size();
+        }
+        return 0;
     }
 }
 
@@ -77,15 +82,25 @@ QModelIndex GroupModel::index(int row, int column, const QModelIndex& parent) co
         return QModelIndex();
     }
 
-    Group* group;
+    QObject* ptr;
 
     if (!parent.isValid()) {
-        group = m_db->rootGroup();
+        ptr = m_db->rootGroup();
     } else {
-        group = groupFromIndex(parent)->children().at(row);
+        Group* group = groupFromIndex(parent);
+
+        if (!group) {
+            return QModelIndex();
+        }
+
+        if (row < group->children().size()) {
+            ptr = group->children().at(row);
+        } else {
+            ptr = group->entries().at(row - group->children().size());
+        }
     }
 
-    return createIndex(row, column, group);
+    return createIndex(row, column, ptr);
 }
 
 QModelIndex GroupModel::parent(const QModelIndex& index) const
@@ -94,7 +109,17 @@ QModelIndex GroupModel::parent(const QModelIndex& index) const
         return QModelIndex();
     }
 
-    return parent(groupFromIndex(index));
+    auto* group = groupFromIndex(index);
+    if (group) {
+        return parent(group);
+    }
+
+    auto* entry = entryFromIndex(index);
+    if (entry) {
+        return this->index(entry->group());
+    }
+
+    return QModelIndex();
 }
 
 QModelIndex GroupModel::parent(Group* group) const
@@ -123,30 +148,45 @@ QVariant GroupModel::data(const QModelIndex& index, int role) const
 
     Group* group = groupFromIndex(index);
 
-    if (role == Qt::DisplayRole) {
-        QString nameTemplate = "%1";
+    if (group) {
+        if (role == Qt::DisplayRole) {
+            QString nameTemplate = "%1";
 #if defined(WITH_XC_KEESHARE)
-        nameTemplate = KeeShare::indicatorSuffix(group, nameTemplate);
+            nameTemplate = KeeShare::indicatorSuffix(group, nameTemplate);
 #endif
-        return nameTemplate.arg(group->name());
-    } else if (role == Qt::DecorationRole) {
-        return Icons::groupIconPixmap(group);
-    } else if (role == Qt::FontRole) {
-        QFont font;
-        if (group->isExpired()) {
-            font.setStrikeOut(true);
+            return nameTemplate.arg(group->name());
+        } else if (role == Qt::DecorationRole) {
+            return Icons::groupIconPixmap(group);
+        } else if (role == Qt::FontRole) {
+            QFont font;
+            font.setBold(true);
+            if (group->isExpired()) {
+                font.setStrikeOut(true);
+            }
+            return font;
+        } else if (role == Qt::ToolTipRole) {
+            QString tooltip;
+            if (!group->parentGroup()) {
+                // only show a tooltip for the root group
+                tooltip = m_db->filePath();
+            }
+            return tooltip;
+        } else {
+            return QVariant();
         }
-        return font;
-    } else if (role == Qt::ToolTipRole) {
-        QString tooltip;
-        if (!group->parentGroup()) {
-            // only show a tooltip for the root group
-            tooltip = m_db->filePath();
-        }
-        return tooltip;
-    } else {
-        return QVariant();
     }
+
+    Entry* entry = entryFromIndex(index);
+
+    if (entry) {
+        if (role == Qt::DisplayRole) {
+            return entry->title();
+        } else if (role == Qt::DecorationRole) {
+            return Icons::entryIconPixmap(entry);
+        }
+    }
+
+    return QVariant();
 }
 
 QVariant GroupModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -175,7 +215,14 @@ Group* GroupModel::groupFromIndex(const QModelIndex& index) const
 {
     Q_ASSERT(index.internalPointer());
 
-    return static_cast<Group*>(index.internalPointer());
+    return qobject_cast<Group*>(static_cast<QObject*>(index.internalPointer()));
+}
+
+Entry* GroupModel::entryFromIndex(const QModelIndex& index) const
+{
+    Q_ASSERT(index.internalPointer());
+
+    return qobject_cast<Entry*>(static_cast<QObject*>(index.internalPointer()));
 }
 
 Qt::DropActions GroupModel::supportedDropActions() const
@@ -201,6 +248,7 @@ bool GroupModel::dropMimeData(const QMimeData* data,
                               const QModelIndex& parent)
 {
     Q_UNUSED(column);
+#if 0
 
     if (action == Qt::IgnoreAction) {
         return true;
@@ -316,6 +364,7 @@ bool GroupModel::dropMimeData(const QMimeData* data,
         }
     }
 
+#endif
     return true;
 }
 
@@ -329,6 +378,7 @@ QStringList GroupModel::mimeTypes() const
 
 QMimeData* GroupModel::mimeData(const QModelIndexList& indexes) const
 {
+#if 0
     if (indexes.isEmpty()) {
         return nullptr;
     }
@@ -360,6 +410,8 @@ QMimeData* GroupModel::mimeData(const QModelIndexList& indexes) const
         data->setData(mimeTypes().at(0), encoded);
         return data;
     }
+#endif
+    return nullptr;
 }
 
 void GroupModel::groupDataChanged(Group* group)

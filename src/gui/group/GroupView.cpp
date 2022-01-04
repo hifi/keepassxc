@@ -20,6 +20,7 @@
 #include <QDragMoveEvent>
 #include <QMimeData>
 #include <QShortcut>
+#include <QDebug>
 
 #include "core/Config.h"
 #include "core/Group.h"
@@ -38,6 +39,7 @@ GroupView::GroupView(Database* db, QWidget* parent)
     connect(this, SIGNAL(expanded(QModelIndex)), SLOT(expandedChanged(QModelIndex)));
     connect(this, SIGNAL(collapsed(QModelIndex)), SLOT(expandedChanged(QModelIndex)));
     connect(this, SIGNAL(clicked(QModelIndex)), SIGNAL(groupSelectionChanged()));
+    connect(this, SIGNAL(clicked(QModelIndex)), SLOT(groupSelected(QModelIndex)));
     connect(m_model, SIGNAL(rowsInserted(QModelIndex,int,int)), SLOT(syncExpandedState(QModelIndex,int,int)));
     connect(m_model, SIGNAL(modelReset()), SLOT(modelReset()));
     connect(selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), SIGNAL(groupSelectionChanged()));
@@ -59,6 +61,7 @@ GroupView::GroupView(Database* db, QWidget* parent)
     setDropIndicatorShown(true);
     setDefaultDropAction(Qt::MoveAction);
     setVisible(!config()->get(Config::GUI_HideGroupsPanel).toBool());
+    setIndentation(0);
 
     connect(config(), &Config::changed, this, [this](Config::ConfigKey key) {
         if (key == Config::GUI_HideGroupsPanel) {
@@ -73,6 +76,15 @@ void GroupView::contextMenuShortcutPressed()
     if (hasFocus() && index.isValid()) {
         emit customContextMenuRequested(visualRect(index).bottomLeft());
     }
+}
+
+void GroupView::groupSelected(const QModelIndex &index)
+{
+    bool expanded = isExpanded(index);
+    if (!expanded) {
+        expand(index);
+    }
+    emit expandedChanged(index);
 }
 
 void GroupView::changeDatabase(const QSharedPointer<Database>& newDb)
@@ -118,14 +130,42 @@ void GroupView::expandedChanged(const QModelIndex& index)
         return;
     }
 
+    m_updatingExpanded = true;
+
+    bool expanded = isExpanded(index);
     Group* group = m_model->groupFromIndex(index);
-    group->setExpanded(isExpanded(index));
+    Group* parentGroup = group->parentGroup();
+
+    // always hide all other groups and entries from parent
+    if (parentGroup) {
+        QModelIndex parentIndex = m_model->index(parentGroup);
+        for (int i = 0; i < m_model->rowCount(parentIndex); i++) {
+            QModelIndex siblingIndex = m_model->index(i, 0, parentIndex);
+            if (siblingIndex != index) {
+                if (expanded) {
+                    collapse(siblingIndex);
+                }
+                setRowHidden(i, parentIndex, expanded);
+            }
+        }
+    }
+
+    // always show all groups and entries in current level but collapsed
+    for (int i = 0; i < m_model->rowCount(index); i++) {
+        QModelIndex siblingIndex = m_model->index(i, 0, index);
+        collapse(siblingIndex);
+        setRowHidden(i, index, false);
+    }
+
+    m_updatingExpanded = false;
+
+    //group->setExpanded(isExpanded(index));
 }
 
 void GroupView::recInitExpanded(Group* group)
 {
     m_updatingExpanded = true;
-    expandGroup(group, group->isExpanded());
+    expandGroup(group, group->parentGroup() == nullptr);
     m_updatingExpanded = false;
 
     const QList<Group*> children = group->children();
