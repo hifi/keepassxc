@@ -19,6 +19,7 @@
 #define KEEPASSX_GROUPVIEW_H
 
 #include <QTreeView>
+#include <QStyledItemDelegate>
 
 class Database;
 class Group;
@@ -57,6 +58,7 @@ private:
 
     GroupModel* const m_model;
     bool m_updatingExpanded;
+    QStyledItemDelegate *m_delegate;
 };
 
 #endif // KEEPASSX_GROUPVIEW_H

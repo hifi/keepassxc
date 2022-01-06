@@ -20,11 +20,57 @@
 #include <QDragMoveEvent>
 #include <QMimeData>
 #include <QShortcut>
+#include <QStyledItemDelegate>
 #include <QDebug>
+#include <QPainter>
 
 #include "core/Config.h"
 #include "core/Group.h"
 #include "gui/group/GroupModel.h"
+
+class GroupItemDelegate: public QStyledItemDelegate
+{
+public:
+    GroupItemDelegate(QObject* parent = nullptr) : QStyledItemDelegate(parent), m_chevron(":/icons/badges/chevron.svg")
+    {
+        m_size = 12;
+        auto chevron = m_chevron.pixmap(m_size, m_size);
+        QTransform t;
+        t.rotate(0);
+        m_open = chevron.transformed(t);
+        t.rotate(-90);
+        m_closed = chevron.transformed(t);
+    }
+
+    //void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
+    {
+        QStyledItemDelegate::paint(painter, option, index);
+
+        GroupView* view = qobject_cast<GroupView*>(parent());
+        auto *model = qobject_cast<GroupModel*>(view->model());
+
+        int off = (option.rect.height() - m_size) / 2;
+        int x = option.rect.x() + option.rect.width() - m_size - off;
+        int y = option.rect.y() + off;
+
+        if (model->groupFromIndex(index)) {
+            if (view->isExpanded(index)) {
+                painter->drawPixmap(x, y, m_size, m_size, m_open, 0, 0, m_size, m_size);
+            } else {
+                painter->drawPixmap(x, y, m_size, m_size, m_closed, 0, 0, m_size, m_size);
+            }
+        }
+    }
+
+private:
+    QIcon m_chevron;
+    QPixmap m_closed;
+    QPixmap m_open;
+    int m_size;
+};
+
+//static GroupItemDelegate delegate;
 
 GroupView::GroupView(Database* db, QWidget* parent)
     : QTreeView(parent)
@@ -34,6 +80,10 @@ GroupView::GroupView(Database* db, QWidget* parent)
     QTreeView::setModel(m_model);
     setHeaderHidden(true);
     setUniformRowHeights(true);
+
+    m_delegate = new GroupItemDelegate(this);
+    setItemDelegate(m_delegate);
+    setAnimated(false);
 
     // clang-format off
     connect(this, SIGNAL(expanded(QModelIndex)), SLOT(expandedChanged(QModelIndex)));
@@ -61,7 +111,18 @@ GroupView::GroupView(Database* db, QWidget* parent)
     setDropIndicatorShown(true);
     setDefaultDropAction(Qt::MoveAction);
     setVisible(!config()->get(Config::GUI_HideGroupsPanel).toBool());
-    setIndentation(0);
+    setIndentation(8);
+
+    //setStyleSheet("QTreeView::branch:open { background: red; }");
+    //setStyleSheet("QTreeView::open { background: red; }");
+    setStyleSheet(R"(
+QTreeView::branch:open:has-children:!has-siblings{image:url(icons/search.png)}
+                                  QTreeView::branch:closed:has-children:!has-siblings{image:url(icons/search.png)}
+                                  QTreeView::branch:open:has-children{image:url(icons/search.png)}
+                                  QTreeView::branch:closed:has-children{image:url(icons/search.png)}
+                                  QTreeView::branch:open:{image:url(icons/search.png)}
+                                  QTreeView::branch:closed:{image:url(icons/search.png)}
+)");
 
     connect(config(), &Config::changed, this, [this](Config::ConfigKey key) {
         if (key == Config::GUI_HideGroupsPanel) {
