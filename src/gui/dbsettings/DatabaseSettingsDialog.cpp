@@ -22,6 +22,7 @@
 #include "DatabaseSettingsWidgetDatabaseKey.h"
 #include "DatabaseSettingsWidgetEncryption.h"
 #include "DatabaseSettingsWidgetGeneral.h"
+#include "DatabaseSettingsWidgetSyncCommand.h"
 #ifdef WITH_XC_BROWSER
 #include "DatabaseSettingsWidgetBrowser.h"
 #endif
@@ -73,6 +74,7 @@ DatabaseSettingsDialog::DatabaseSettingsDialog(QWidget* parent)
     , m_browserWidget(new DatabaseSettingsWidgetBrowser(this))
 #endif
     , m_maintenanceWidget(new DatabaseSettingsWidgetMaintenance(this))
+    , m_syncCommandWidget(new DatabaseSettingsWidgetSyncCommand(this))
 {
     m_ui->setupUi(this);
 
@@ -118,6 +120,9 @@ DatabaseSettingsDialog::DatabaseSettingsDialog(QWidget* parent)
 
     m_ui->categoryList->addCategory(tr("Maintenance"), icons()->icon("hammer-wrench"));
     m_ui->stackedWidget->addWidget(m_maintenanceWidget);
+
+    m_ui->categoryList->addCategory(tr("Sync"), icons()->icon("refresh"));
+    m_ui->stackedWidget->addWidget(m_syncCommandWidget);
 
     pageChanged();
 }
