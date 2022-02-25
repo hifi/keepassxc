@@ -121,7 +121,7 @@ DatabaseSettingsDialog::DatabaseSettingsDialog(QWidget* parent)
     m_ui->categoryList->addCategory(tr("Maintenance"), icons()->icon("hammer-wrench"));
     m_ui->stackedWidget->addWidget(m_maintenanceWidget);
 
-    m_ui->categoryList->addCategory(tr("Sync"), icons()->icon("refresh"));
+    m_ui->categoryList->addCategory(tr("Sync Command"), icons()->icon("refresh"));
     m_ui->stackedWidget->addWidget(m_syncCommandWidget);
 
     pageChanged();

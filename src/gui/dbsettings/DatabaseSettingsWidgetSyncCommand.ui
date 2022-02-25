@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <class>DatabaseSettingsWidgetSyncCommand</class>
+ <widget class="QWidget" name="DatabaseSettingsWidgetSyncCommand">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>995</width>
-    <height>846</height>
+    <width>1008</width>
+    <height>803</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
-      <string>Sync commands</string>
+      <string>Sync Commands</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
@@ -64,7 +64,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox_4">
      <property name="title">
-      <string>Command settings</string>
+      <string>Command Settings</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
       <item row="1" column="1">
@@ -108,197 +108,235 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
-       <widget class="QCheckBox" name="checkBox">
-        <property name="text">
-         <string>Run load command after unlocking this database</string>
-        </property>
-        <property name="checked">
+      <item row="4" column="1" colspan="2">
+       <widget class="QGroupBox" name="groupBox">
+        <property name="enabled">
          <bool>true</bool>
         </property>
-       </widget>
-      </item>
-      <item row="3" column="1" colspan="2">
-       <widget class="QCheckBox" name="checkBox_2">
-        <property name="text">
-         <string>Run save command after saving this database</string>
+        <property name="title">
+         <string>Load</string>
         </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBox">
-     <property name="title">
-      <string>Load</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Command:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QPlainTextEdit" name="plainTextEdit_7">
-        <property name="plainText">
-         <string>sshpass -p &quot;{REF:P@I:46C9B1FFBD4ABC4BBB260C6190BAD20C}&quot; sftp user@remote</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>Input:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QPlainTextEdit" name="plainTextEdit_6">
-        <property name="plainText">
-         <string>binary
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="2" column="1">
+          <widget class="QPlainTextEdit" name="plainTextEdit_6">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="plainText">
+            <string>binary
 fetch remote.kdbx &quot;{DATABASE_PATH}&quot;</string>
-        </property>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>Input:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QPlainTextEdit" name="plainTextEdit_7">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="plainText">
+            <string>sshpass -p &quot;{REF:P@I:46C9B1FFBD4ABC4BBB260C6190BAD20C}&quot; sftp user@remote</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_3">
+             <property name="text">
+              <string>Preview</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_4">
+             <property name="text">
+              <string>Run</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Command:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QCheckBox" name="checkBox">
+           <property name="text">
+            <string>Run command automatically after unlocking this database</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
-      <item row="2" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <item>
-         <spacer name="horizontalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QPushButton" name="pushButton_3">
-          <property name="text">
-           <string>Preview</string>
-          </property>
-          <property name="checkable">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="pushButton_4">
-          <property name="text">
-           <string>Run</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBox_3">
-     <property name="title">
-      <string>Save</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_2">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Command:</string>
+      <item row="5" column="1" colspan="2">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="title">
+         <string>Save</string>
         </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QPlainTextEdit" name="plainTextEdit_5">
-        <property name="plainText">
-         <string>binary
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Input:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QPlainTextEdit" name="plainTextEdit_5">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="plainText">
+            <string>binary
 put &quot;{DATABASE_PATH}&quot; remote.kdbx</string>
-        </property>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QPlainTextEdit" name="plainTextEdit_4">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="plainText">
+            <string>sshpass -p &quot;{REF:P@I:46C9B1FFBD4ABC4BBB260C6190BAD20C}&quot; sftp user@remote</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Command:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <item>
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_2">
+             <property name="text">
+              <string>Preview</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton">
+             <property name="text">
+              <string>Run</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="3" column="1">
+          <widget class="QCheckBox" name="checkBox_2">
+           <property name="text">
+            <string>Run command automatically after saving this database</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QPlainTextEdit" name="plainTextEdit_4">
-        <property name="plainText">
-         <string>sshpass -p &quot;{REF:P@I:46C9B1FFBD4ABC4BBB260C6190BAD20C}&quot; sftp user@remote</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_6">
-        <property name="text">
-         <string>Input:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QPushButton" name="pushButton_2">
-          <property name="text">
-           <string>Preview</string>
-          </property>
-          <property name="checkable">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="pushButton">
-          <property name="text">
-           <string>Run</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
       </item>
      </layout>
     </widget>
-   </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>
