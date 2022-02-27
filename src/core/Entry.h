@@ -240,6 +240,7 @@ public:
     QString resolveDateTimePlaceholder(PlaceholderType placeholderType) const;
     PlaceholderType placeholderType(const QString& placeholder) const;
     QString resolveUrl(const QString& url) const;
+    static QString resolveReferencePlaceholderRecursive(const QString& placeholder, int maxDepth, Database* database);
 
     /**
      * Call before and after set*() methods to create a history item
