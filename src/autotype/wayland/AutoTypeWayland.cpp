@@ -113,7 +113,7 @@ void AutoTypePlatformWayland::finishAutoType()
 
 bool AutoTypePlatformWayland::isAvailable()
 {
-    return nixUtils()->remoteDesktopPortal()->isAvailable();
+    return true;
 }
 
 QStringList AutoTypePlatformWayland::windowTitles()

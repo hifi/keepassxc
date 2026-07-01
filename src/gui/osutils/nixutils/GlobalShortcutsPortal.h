@@ -20,6 +20,8 @@
 
 #include "gui/osutils/nixutils/DesktopPortal.h"
 
+#include <QDBusServiceWatcher>
+
 class GlobalShortcutsPortal : public DesktopPortal
 {
     Q_OBJECT
@@ -37,10 +39,16 @@ signals:
 protected:
     void onSessionClosed(const QVariantMap& details) override;
 
+private slots:
+    void onPortalRegistered(const QString& service);
+    void onPortalUnregistered(const QString& service);
+
 private:
     void createSession();
     void bindShortcutsToCurrentSession();
     void callBindShortcuts();
+
+    QDBusServiceWatcher m_watcher;
 };
 
 #endif // KEEPASSXC_GLOBALSHORTCUTSPORTAL_H

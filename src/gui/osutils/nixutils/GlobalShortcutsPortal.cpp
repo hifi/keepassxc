@@ -37,10 +37,6 @@ using XdpShortcuts = QList<XdpShortcut>;
 GlobalShortcutsPortal::GlobalShortcutsPortal(QObject* parent)
     : DesktopPortal(parent)
 {
-    if (!isAvailable()) {
-        return;
-    }
-
     qDBusRegisterMetaType<XdpShortcut>();
     qDBusRegisterMetaType<XdpShortcuts>();
 
@@ -78,7 +74,33 @@ GlobalShortcutsPortal::GlobalShortcutsPortal(QObject* parent)
                 }
             });
 
+    m_watcher.setWatchMode(QDBusServiceWatcher::WatchForRegistration | QDBusServiceWatcher::WatchForUnregistration);
+    m_watcher.setConnection(QDBusConnection::sessionBus());
+    connect(&m_watcher, &QDBusServiceWatcher::serviceRegistered, this, &GlobalShortcutsPortal::onPortalRegistered);
+    connect(&m_watcher, &QDBusServiceWatcher::serviceUnregistered, this, &GlobalShortcutsPortal::onPortalUnregistered);
+    m_watcher.addWatchedService(QStringLiteral("org.freedesktop.portal.Desktop"));
+
+    if (isAvailable()) {
+        createSession();
+    }
+}
+
+void GlobalShortcutsPortal::onPortalRegistered(const QString& service)
+{
+    Q_UNUSED(service)
+
+    if (!isAvailable()) {
+        return;
+    }
+
     createSession();
+}
+
+void GlobalShortcutsPortal::onPortalUnregistered(const QString& service)
+{
+    Q_UNUSED(service)
+
+    closeSession();
 }
 
 bool GlobalShortcutsPortal::isAvailable() const

@@ -156,10 +156,6 @@ AutoType::AutoType(QObject* parent, bool test)
         if (platformName == "xcb") {
             if (config()->get(Config::AutoTypePreferDesktopPortals).toBool()) {
                 m_platform = new AutoTypePlatformWayland();
-                if (!m_platform->isAvailable()) {
-                    delete m_platform;
-                    m_platform = new AutoTypePlatformX11();
-                }
             } else {
                 m_platform = new AutoTypePlatformX11();
             }

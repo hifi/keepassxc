@@ -260,6 +260,12 @@ void RemoteDesktopPortal::tryStartSession()
         return;
     }
 
+    if (!s_remoteDesktopInterface->isValid()) {
+        m_error = tr("The XDG Remote Desktop portal is not available which is required for Auto-Type.");
+        emit sessionStartupFinished();
+        return;
+    }
+
     m_error.clear();
     m_sessionStarting = true;
     resetClipboard();
